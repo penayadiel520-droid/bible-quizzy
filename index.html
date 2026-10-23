@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bible Quizzy</title>
+<meta name="description" content="Quizzes for all 66 books of the Bible, Old and New Testament, plus John chapter by chapter. Your scores, underlined verses and notes save on your device.">
+<meta name="theme-color" content="#0d1322">
+<meta property="og:title" content="Bible Quizzy">
+<meta property="og:description" content="66 books. One story. Read a book of the Bible, then see what stuck.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1322'/%3E%3Cpath d='M32 21c-6-4-13-4-20-2v26c7-2 14-2 20 2 6-4 13-4 20-2V19c-7-2-14-2-20 2z' fill='%23f0b860'/%3E%3Cpath d='M32 21v26' stroke='%230d1322' stroke-width='2.5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one centered study column under a sticky top bar. Home is a lamplit bookshelf of all 66 books;
+   each quiz shows one card at a time, like reading by lamplight at night. Dark theme only. */
+:root{
+  --bg:#0d1322; --surface:#141c2f; --surface-2:#1a2440; --line:#283456;
+  --fg:#e8ebf3; --muted:#9ba6c2;
+  --lamp:#f0b860; --lamp-soft:rgba(240,184,96,.13); --on-lamp:#1b1407;
+  --sage:#7cc6a0; --sage-soft:rgba(124,198,160,.13);
+  --rose:#ec8f8f; --rose-soft:rgba(236,143,143,.12);
+  --art-sky:#18223b; --art-star:#f6e9c8; --art-gold:#f0b860; --art-gold-deep:#b8853a;
+  --art-hill:#1f2b4a; --art-hill2:#273660; --art-page:#f1e7d0; --art-line:#b9a37a;
+  --art-stroke:#8e9bc0; --art-glass:#243661; --art-heart:#b86c78; --art-clay:#a8794e; --art-clay2:#6f4c30;
+  --f-display:"Fraunces", Georgia, "Times New Roman", serif;
+  --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0;
+  background:var(--bg);
+  background-image:radial-gradient(ellipse 90% 45% at 50% -8%, var(--lamp-soft), transparent 70%);
+  background-repeat:no-repeat;
+  color:var(--fg); font-family:var(--f-body); font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--bg)}
+[hidden]:not([hidden=until-found i]){display:none !important}
+img{max-width:100%}
+.wrap{max-width:680px; margin:0 auto; padding-block:0 72px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display); font-weight:600; text-wrap:balance; margin:0; line-height:1.15}
+p{margin:0}
+a{color:var(--lamp)}
+.mono{font-family:var(--f-mono); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.muted{color:var(--muted)}
+button{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--lamp); outline-offset:3px; border-radius:10px}
+.stack{display:flex; flex-direction:column; gap:12px}
+
+/* ---------- top bar + verse ribbon ---------- */
+.top{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:5;
+  background:var(--bg); padding-block:14px 12px; margin-bottom:8px;
+  border-bottom:1px solid var(--line);
+}
+.top-row{display:flex; justify-content:space-between; align-items:center; gap:12px}
+.top-left{display:flex; gap:8px; align-items:baseline; min-width:0; flex-wrap:wrap}
+.brand{font-family:var(--f-display); font-weight:600; font-size:1.05rem; color:var(--fg); text-decoration:none; display:inline-flex; align-items:center; gap:8px}
+.brand:hover{color:var(--lamp)}
+.brand svg{width:22px; height:22px; flex:none}
+.top-right{display:flex; align-items:center; gap:10px; flex:none}
+.top-row .meta{font-variant-numeric:tabular-nums; text-align:right}
+.pill{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--fg); text-decoration:none; font-weight:600; font-size:.85rem; white-space:nowrap}
+.pill:hover{border-color:var(--lamp); color:var(--lamp)}
+.pill .n{font-family:var(--f-mono); font-size:.68rem; color:var(--on-lamp); background:var(--lamp); border-radius:999px; padding:1px 7px; font-weight:500}
+#ribbonWrap{margin-top:10px}
+.ribbon{display:flex; gap:2px; align-items:flex-end; height:12px}
+.ribbon.dense{gap:1px}
+.tick{flex:1; min-width:0; height:8px; border-radius:2px; background:var(--line); transition:background .3s, height .3s, opacity .3s}
+.tick.gap{margin-left:7px}
+.ribbon.dense .tick{border-radius:1px}
+.ribbon.dense .tick.gap{margin-left:4px}
+.tick.seen{background:var(--lamp); opacity:.35}
+.tick.on{background:var(--lamp); opacity:1; height:12px}
+.ribbon-labels{display:flex; gap:7px; margin-top:6px}
+.ribbon-labels span{font-family:var(--f-mono); font-size:.62rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+
+/* ---------- screens ---------- */
+.fb, .ul-card, .section-head, .opts{scroll-margin-top:120px}
+.screen{display:flex; flex-direction:column; gap:22px; padding-top:14px; animation:rise .45s ease both; position:relative}
+@keyframes rise{from{opacity:.35; transform:translateY(8px)} to{opacity:1; transform:none}}
+.art{display:block; width:100%; height:auto; max-width:100%}
+.hero-art{border-radius:18px; overflow:hidden}
+.lede{color:var(--muted); font-size:1.02rem; max-width:62ch}
+h1.title{font-size:clamp(2rem, 7vw, 2.7rem); letter-spacing:-.01em}
+h1.title em{font-style:italic; font-weight:400; color:var(--lamp)}
+.subtitle{font-family:var(--f-display); font-style:italic; font-size:1.25rem; color:var(--lamp); margin-top:-4px}
+.back{align-self:flex-start; color:var(--muted); text-decoration:none; font-weight:600; font-size:.92rem; padding:4px 0}
+.back:hover{color:var(--lamp)}
+
+.breath{display:flex; gap:14px; align-items:flex-start; padding:16px 18px; border-radius:16px; background:var(--lamp-soft)}
+.breath .dot{flex:none; width:12px; height:12px; margin-top:6px; border-radius:50%; background:var(--lamp); animation:breathe 6s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.7); opacity:.6} 50%{transform:scale(1.25); opacity:1}}
+
+.glance{display:grid; gap:12px}
+.glance-item{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; padding-bottom:12px; border-bottom:1px solid var(--line)}
+.glance-item:last-child{border-bottom:0; padding-bottom:0}
+.glance-item .mono{grid-row:span 2; padding-top:3px; color:var(--lamp); min-width:4.8rem}
+.glance-item h3{font-size:1.1rem}
+.glance-item p{color:var(--muted); font-size:.95rem; min-width:0}
+
+.rounds{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px}
+.round-chip{padding:12px; border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; gap:2px}
+.round-chip .num{font-family:var(--f-display); font-size:1.4rem; color:var(--lamp); line-height:1}
+.round-chip b{font-weight:600}
+.round-chip small{color:var(--muted); font-size:.78rem}
+@media (max-width:420px){ .rounds{grid-template-columns:1fr} .round-chip{flex-direction:row; align-items:baseline; gap:10px} }
+
+.btn{
+  appearance:none; border:0; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:15px 24px; border-radius:999px; font-weight:600; font-size:1rem; text-decoration:none; text-align:center;
+  background:var(--lamp); color:var(--on-lamp); transition:transform .15s, filter .15s, border-color .15s;
+}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:scale(.98)}
+.btn.block{width:100%}
+.btn.ghost{background:transparent; color:var(--fg); border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--lamp)}
+.btn.sm{padding:10px 16px; font-size:.92rem}
+.hint{color:var(--muted); font-size:.85rem; text-align:center}
+
+/* round intro */
+.round-hero{display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; padding-top:18px}
+.round-hero .art{max-width:280px; border-radius:22px}
+.round-hero .numeral{font-family:var(--f-display); font-size:3rem; color:var(--lamp); line-height:1}
+.round-hero h2{font-size:1.8rem}
+.round-hero p{color:var(--muted); max-width:44ch}
+
+/* question */
+.q-head{display:flex; gap:14px; align-items:center}
+.q-head .art{width:64px; flex:none; border-radius:14px}
+.q-head .stack{display:flex; flex-direction:column; gap:2px; min-width:0}
+.q-head .stack b{font-weight:600}
+.type{align-self:flex-start; font-family:var(--f-mono); font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; padding:5px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
+.q-text{font-family:var(--f-display); font-weight:400; font-size:clamp(1.3rem, 4.6vw, 1.55rem); line-height:1.3; text-wrap:pretty}
+.blank{display:inline-block; min-width:4.5em; border-bottom:2px solid var(--lamp); color:var(--lamp); text-align:center; font-style:italic}
+.opts{display:grid; gap:10px}
+.opt{
+  appearance:none; cursor:pointer; text-align:left; width:100%;
+  display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:14px;
+  background:var(--surface); border:1px solid var(--line); color:var(--fg); font-size:1rem; line-height:1.4;
+  transition:border-color .2s, background .2s, opacity .2s, transform .15s;
+}
+.opt:hover:not([disabled]){border-color:var(--lamp)}
+.opt:active:not([disabled]){transform:scale(.99)}
+.opt .key{flex:none; width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:var(--f-mono); font-size:.75rem; border:1px solid var(--line); color:var(--muted)}
+.opt .txt{min-width:0}
+.opt[disabled]{cursor:default}
+.opt.correct{border-color:var(--sage); background:var(--sage-soft)}
+.opt.correct .key{background:var(--sage); border-color:var(--sage); color:var(--bg)}
+.opt.wrong{border-color:var(--rose); background:var(--rose-soft)}
+.opt.wrong .key{background:var(--rose); border-color:var(--rose); color:var(--bg)}
+.opt.dim{opacity:.5}
+.fb{padding:18px; border-radius:16px; background:var(--surface-2); display:flex; flex-direction:column; gap:8px; border:1px solid var(--line)}
+.fb h3{font-size:1.15rem}
+.fb.good h3{color:var(--sage)}
+.fb.bad h3{color:var(--rose)}
+.fb p{color:var(--fg); opacity:.92}
+.ref{font-family:var(--f-mono); font-size:.72rem; letter-spacing:.06em; color:var(--lamp)}
+a.ref{text-decoration:none} a.ref:hover{text-decoration:underline}
+
+/* results */
+.score-wrap{display:flex; gap:20px; align-items:center; flex-wrap:wrap}
+.ring{width:132px; height:132px; flex:none}
+.ring .track{fill:none; stroke:var(--line); stroke-width:10}
+.ring .val{fill:none; stroke:var(--lamp); stroke-width:10; stroke-linecap:round; transform:rotate(-90deg); transform-origin:66px 66px; transition:stroke-dashoffset 1.2s ease}
+.ring text{fill:var(--fg); font-family:var(--f-display); font-weight:600}
+.ring .of{fill:var(--muted); font-family:var(--f-mono); font-size:11px; font-weight:500}
+.score-copy{flex:1; min-width:200px; display:flex; flex-direction:column; gap:6px}
+.score-copy h2{font-size:1.6rem}
+.score-copy p{color:var(--muted)}
+.score-copy .mono{color:var(--lamp)}
+.res-actions{display:flex; gap:10px; flex-wrap:wrap}
+.res-actions .btn{flex:1 1 160px}
+.history{padding:16px 18px; border-radius:16px; border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; gap:12px}
+.history-top{display:flex; justify-content:space-between; gap:10px; align-items:baseline; flex-wrap:wrap}
+.saved-tag{display:inline-flex; align-items:center; gap:6px; color:var(--sage); font-size:.85rem; font-weight:600}
+.hbars{display:flex; gap:8px; align-items:flex-end; min-height:86px}
+.hbar{flex:1; max-width:44px; display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0}
+.hbar b{font-family:var(--f-mono); font-size:.66rem; font-weight:500; color:var(--muted)}
+.hbar i{display:block; width:100%; border-radius:6px 6px 2px 2px; background:var(--lamp); opacity:.4; height:calc(var(--p) * 54px + 4px); transition:height .6s ease}
+.hbar.now i{opacity:1}
+.hbar.now b{color:var(--lamp)}
+.hbar small{font-family:var(--f-mono); font-size:.58rem; color:var(--muted); white-space:nowrap}
+
+.section-head{display:flex; gap:14px; align-items:center; margin-top:18px}
+.section-head .art{width:76px; flex:none; border-radius:16px}
+.section-head .stack{gap:4px; min-width:0}
+.section-head h2{font-size:1.5rem}
+.section-head p{color:var(--muted); font-size:.92rem}
+
+.missed{display:grid; gap:10px; margin:0; padding:0; list-style:none}
+.missed li{padding:14px 16px; border-radius:14px; border:1px solid var(--line); display:flex; flex-direction:column; gap:6px}
+.missed .q{font-size:.95rem; color:var(--muted)}
+.missed .a{font-weight:600}
+
+.words{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px}
+@media (max-width:520px){ .words{grid-template-columns:1fr} }
+.word{
+  appearance:none; cursor:pointer; text-align:left; width:100%;
+  display:flex; flex-direction:column; gap:6px; padding:14px 16px; border-radius:14px;
+  background:var(--surface); border:1px solid var(--line); color:var(--fg);
+  transition:border-color .2s, background .2s;
+}
+.word:hover{border-color:var(--lamp)}
+.word .wtop{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.word .term{font-family:var(--f-display); font-size:1.15rem; font-weight:600}
+.word .meaning{font-size:.93rem; line-height:1.5; min-width:0}
+.word .tap{font-size:.8rem; color:var(--muted)}
+.word.open{background:var(--surface-2)}
+.toolbar{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+.linkbtn{appearance:none; border:0; background:none; cursor:pointer; color:var(--lamp); font-weight:600; padding:4px 0; font-size:.92rem; text-decoration:none}
+.linkbtn:hover{text-decoration:underline}
+
+.ul-list{display:grid; gap:12px}
+.ul-card{padding:18px; border-radius:16px; border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; gap:12px; transition:border-color .3s}
+.ul-card .headline{font-family:var(--f-display); font-size:1.2rem; font-weight:400; line-height:1.35}
+.ul-card .headline span, .ul-item .headline span{
+  background-image:linear-gradient(var(--lamp), var(--lamp));
+  background-repeat:no-repeat; background-position:0 100%; background-size:0% 2px;
+  transition:background-size .7s ease; padding-bottom:2px;
+}
+.ul-card.done{border-color:rgba(240,184,96,.45)}
+.ul-card.done .headline span, .ul-item .headline span{background-size:100% 2px}
+.apply{display:grid; gap:10px}
+.apply div{display:grid; grid-template-columns:7.5rem 1fr; gap:10px; font-size:.95rem}
+.apply .mono{padding-top:3px}
+.apply p{min-width:0}
+@media (max-width:400px){ .apply div{grid-template-columns:1fr; gap:2px} }
+.ul-toggle{
+  appearance:none; cursor:pointer; align-self:flex-start; display:inline-flex; align-items:center; gap:8px;
+  padding:9px 14px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--fg); font-size:.88rem; font-weight:600;
+}
+.ul-card.done .ul-toggle{border-color:var(--lamp); color:var(--lamp); background:var(--lamp-soft)}
+.ul-count{font-variant-numeric:tabular-nums}
+
+textarea{
+  width:100%; min-height:120px; resize:vertical; padding:14px 16px; border-radius:14px;
+  border:1px solid var(--line); background:var(--surface); color:var(--fg); font:inherit; line-height:1.5;
+}
+textarea:focus{outline:2px solid var(--lamp); outline-offset:1px}
+.reflect-foot{display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+.quiet{padding:18px; border-radius:16px; background:var(--lamp-soft); display:flex; flex-direction:column; gap:8px}
+.quiet h3{font-size:1.15rem}
+.next-up{padding:18px; border-radius:16px; border:1px dashed var(--line); display:flex; flex-direction:column; gap:6px; color:var(--fg); text-decoration:none; transition:border-color .2s}
+a.next-up:hover{border-color:var(--lamp)}
+.next-up h3{font-size:1.2rem}
+.next-up p{color:var(--muted)}
+.navrow{display:flex; gap:10px; flex-wrap:wrap}
+.navrow .btn{flex:1 1 140px}
+.center{text-align:center; color:var(--muted); padding:40px 0}
+
+/* ---------- home ---------- */
+.home-hero{display:flex; flex-direction:column; gap:12px}
+.stats{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px}
+@media (max-width:540px){ .stats{grid-template-columns:repeat(2, minmax(0,1fr))} }
+.stat{padding:14px; border:1px solid var(--line); border-radius:14px; background:var(--surface); display:flex; flex-direction:column; gap:2px; min-width:0}
+.stat b{font-family:var(--f-display); font-size:1.7rem; color:var(--lamp); line-height:1.1; font-variant-numeric:tabular-nums}
+.stat span{font-size:.8rem; color:var(--muted)}
+.progress{display:flex; gap:12px; align-items:center}
+.bar{flex:1; height:8px; border-radius:999px; background:var(--line); overflow:hidden}
+.bar span{display:block; height:100%; background:var(--lamp); border-radius:999px; transition:width .8s ease}
+.feat{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px}
+.ch-list{display:grid; gap:12px}
+.ch-card{display:flex; flex-direction:column; gap:8px; padding:18px; border-radius:16px; border:1px solid var(--line); background:var(--surface); color:var(--fg); text-decoration:none; transition:border-color .2s, transform .15s; min-width:0}
+.ch-card:hover{border-color:var(--lamp)}
+.ch-card:active{transform:scale(.99)}
+.ch-card.feature{background:var(--surface-2); border-color:var(--lamp)}
+.ch-top{display:flex; justify-content:space-between; gap:10px; align-items:center}
+.badge{font-family:var(--f-mono); font-size:.66rem; letter-spacing:.06em; text-transform:uppercase; padding:4px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted); white-space:nowrap}
+.badge.done{border-color:var(--sage); color:var(--sage)}
+.badge.new{border-color:var(--lamp); color:var(--lamp)}
+.ch-card h3{font-size:1.3rem}
+.ch-card p{color:var(--muted); font-size:.95rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.chips span{font-size:.8rem; padding:3px 10px; border-radius:999px; background:var(--lamp-soft); color:var(--fg)}
+
+.lib-tools{display:flex; flex-direction:column; gap:12px; scroll-margin-top:80px}
+.lib-row{display:flex; gap:10px; align-items:center}
+.tabs{display:flex; gap:6px; padding:4px; border:1px solid var(--line); border-radius:999px; background:var(--surface); align-self:flex-start; max-width:100%; overflow-x:auto}
+.tabs button, .tabs a{appearance:none; border:0; background:none; cursor:pointer; flex:none; padding:8px 16px; border-radius:999px; font-weight:600; font-size:.92rem; color:var(--muted); text-decoration:none; white-space:nowrap}
+.tabs button:hover{color:var(--fg)}
+.tabs .on{background:var(--lamp); color:var(--on-lamp)}
+.tabs .on:hover{color:var(--on-lamp)}
+.tabs small{font-family:var(--f-mono); font-size:.68rem; font-weight:500; opacity:.75; margin-left:4px}
+.search{flex:1; min-width:0; position:relative}
+.search input{width:100%; padding:11px 14px 11px 38px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--fg); font:inherit; font-size:.95rem}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{outline:2px solid var(--lamp); outline-offset:1px}
+.search svg{position:absolute; left:14px; top:50%; width:16px; height:16px; transform:translateY(-50%); stroke:var(--muted); fill:none}
+.seg{display:flex; padding:3px; border:1px solid var(--line); border-radius:999px; background:var(--surface); flex:none}
+.seg button{appearance:none; border:0; background:none; cursor:pointer; padding:7px 12px; border-radius:999px; font-size:.82rem; font-weight:600; color:var(--muted)}
+.seg button.on{background:var(--surface-2); color:var(--fg); box-shadow:inset 0 0 0 1px var(--line)}
+
+/* the bookshelf */
+.shelves{display:flex; flex-direction:column; gap:34px}
+.shelf{display:flex; flex-direction:column; gap:14px}
+.shelf-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px}
+.shelf-head h2{font-size:1.35rem; display:flex; align-items:center; gap:10px}
+.shelf-head h2::before{content:""; flex:none; width:12px; height:12px; border-radius:3px; background:var(--c); box-shadow:0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent)}
+.shelf-head p{color:var(--muted); font-size:.92rem; margin-top:4px}
+.shelf-head .mono{white-space:nowrap; padding-top:6px}
+.spines{
+  --row:178px;
+  display:flex; flex-wrap:wrap; align-items:flex-end; gap:18px 6px; padding:0 8px 9px;
+  background-image:repeating-linear-gradient(to bottom,
+    transparent 0 var(--row),
+    rgba(240,184,96,.42) var(--row) calc(var(--row) + 1px),
+    #1d2742 calc(var(--row) + 1px) calc(var(--row) + 9px),
+    transparent calc(var(--row) + 9px) calc(var(--row) + 18px));
+}
+.slot{height:var(--row); display:flex; align-items:flex-end}
+.spine{
+  position:relative; width:var(--w); height:var(--h); border-radius:4px 4px 2px 2px;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.38), rgba(255,255,255,.12) 20%, rgba(255,255,255,.03) 52%, rgba(0,0,0,.32)),
+    var(--c);
+  color:var(--ink); text-decoration:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:16px 0 7px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 6px 14px rgba(0,0,0,.4);
+  transition:transform .22s cubic-bezier(.2,.8,.3,1.2), box-shadow .22s, filter .22s;
+  transform-origin:50% 100%;
+}
+.spine::before, .spine::after{content:""; position:absolute; left:4px; right:4px; height:2px; background:rgba(240,184,96,.6); border-radius:1px}
+.spine::before{top:8px}
+.spine::after{bottom:24px}
+.spine .nm{writing-mode:vertical-rl; font-family:var(--f-display); font-weight:600; font-size:.8rem; letter-spacing:.02em; white-space:nowrap; line-height:1}
+.spine .mk{font-family:var(--f-mono); font-size:.58rem; opacity:.75; line-height:1}
+.spine:hover, .spine:focus-visible{transform:translateY(-10px) rotate(-1.5deg); box-shadow:0 0 0 1.5px var(--lamp), 0 16px 26px rgba(0,0,0,.5); filter:brightness(1.12); outline:none}
+.spine .bm{position:absolute; top:-7px; right:5px; width:8px; height:22px; background:var(--lamp); clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%); filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
+.spine.started .bm{background:var(--muted); opacity:.8}
+.spine.done .mk{color:var(--lamp); opacity:1; font-size:.7rem}
+.spine.dim{opacity:.18; pointer-events:none}
+
+.blist{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:10px}
+.brow{display:grid; grid-template-columns:6px 1fr auto; gap:12px; align-items:center; padding:12px 14px 12px 0; border-radius:14px; border:1px solid var(--line); background:var(--surface); color:var(--fg); text-decoration:none; overflow:hidden; transition:border-color .2s}
+.brow:hover{border-color:var(--lamp)}
+.brow::before{content:""; align-self:stretch; background:var(--c); margin:-12px 0}
+.brow b{font-family:var(--f-display); font-size:1.08rem; font-weight:600; display:block}
+.brow span{color:var(--muted); font-size:.85rem; display:block}
+
+/* book intro banner */
+.banner{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px; align-items:end; padding:16px; border-radius:20px; border:1px solid var(--line);
+  background:var(--surface); background:radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--c) 45%, transparent), transparent 60%), var(--surface)}
+.banner .art{border-radius:14px; max-width:300px}
+.banner .spine{pointer-events:none; --w:46px; --h:168px; box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 10px 22px rgba(0,0,0,.5)}
+.banner .spine .nm{font-size:.95rem}
+.banner-side{display:flex; gap:14px; align-items:flex-end}
+.banner-meta{display:flex; flex-direction:column; gap:3px; text-align:right; padding-bottom:4px}
+.banner-meta b{font-family:var(--f-display); font-size:1.05rem}
+.banner-meta span{font-size:.82rem; color:var(--muted); white-space:nowrap}
+@media (max-width:480px){ .banner-meta{display:none} }
+
+/* saved result panel on a quiz intro */
+.saved{display:grid; grid-template-columns:auto 1fr; gap:14px 16px; align-items:center; padding:16px 18px; border-radius:16px; border:1px solid rgba(124,198,160,.45); background:var(--sage-soft)}
+.saved .mini{width:68px; height:68px}
+.saved .mini .track{fill:none; stroke:var(--line); stroke-width:7}
+.saved .mini .val{fill:none; stroke:var(--sage); stroke-width:7; stroke-linecap:round; transform:rotate(-90deg); transform-origin:34px 34px}
+.saved .mini text{fill:var(--fg); font-family:var(--f-display); font-weight:600; font-size:17px}
+.saved-copy{display:flex; flex-direction:column; gap:2px; min-width:0}
+.saved-copy .mono{color:var(--sage)}
+.saved-copy b{font-family:var(--f-display); font-size:1.2rem; font-weight:600}
+.saved-copy span{color:var(--muted); font-size:.9rem}
+.saved-actions{grid-column:1 / -1; display:flex; gap:10px; flex-wrap:wrap}
+.saved-actions .btn{flex:1 1 150px}
+.saved.resume{border-color:rgba(240,184,96,.5); background:var(--lamp-soft)}
+.saved.resume .mono{color:var(--lamp)}
+.saved.resume .mini .val{stroke:var(--lamp)}
+
+.keyverse{padding:16px 18px; border-left:3px solid var(--lamp); background:var(--surface); border-radius:0 14px 14px 0; display:flex; flex-direction:column; gap:6px}
+.keyverse p{font-family:var(--f-display); font-size:1.15rem; line-height:1.4}
+.cast{display:grid; gap:10px}
+.cast-item{display:flex; flex-direction:column; gap:4px; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:var(--surface)}
+.cast-head{display:flex; gap:8px; align-items:baseline; flex-wrap:wrap}
+.cast-head b{font-weight:600; font-size:1.02rem}
+.cast-item p{color:var(--muted); font-size:.93rem}
+.cast-item a{font-size:.88rem; font-weight:600; text-decoration:none}
+.cast-item a:hover{text-decoration:underline}
+.look{display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; padding:12px 14px; border:1px dashed var(--lamp); border-radius:14px; background:var(--lamp-soft); font-size:.93rem}
+.look a{font-weight:600; text-decoration:none}
+.look a:hover{text-decoration:underline}
+.jump{display:flex; flex-wrap:wrap; gap:6px}
+.jump a{min-width:2.6rem; padding:7px 0; text-align:center; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--fg); text-decoration:none; font-family:var(--f-mono); font-size:.8rem; font-variant-numeric:tabular-nums}
+.jump a:hover{border-color:var(--lamp)}
+.jump a.done{border-color:var(--sage); color:var(--sage)}
+.chapters-box{padding:18px; border-radius:16px; border:1px solid var(--lamp); background:var(--surface-2); display:flex; flex-direction:column; gap:12px}
+.chapters-box h3{font-size:1.25rem}
+
+/* ---------- My Bible ---------- */
+.pane{display:flex; flex-direction:column; gap:12px}
+.rec{display:grid; grid-template-columns:6px minmax(0,1fr) auto; gap:4px 14px; align-items:center; padding:14px 16px 14px 0; border-radius:14px; border:1px solid var(--line); background:var(--surface); overflow:hidden}
+.rec::before{content:""; grid-row:1 / span 2; align-self:stretch; background:var(--c); margin:-14px 0}
+.rec-main{display:flex; flex-direction:column; gap:2px; min-width:0}
+.rec-title{font-family:var(--f-display); font-weight:600; font-size:1.12rem; color:var(--fg); text-decoration:none}
+.rec-title:hover{color:var(--lamp)}
+.rec-score{text-align:right}
+.rec-score b{font-family:var(--f-display); font-size:1.5rem; color:var(--lamp); line-height:1}
+.rec-score small{display:block; font-family:var(--f-mono); font-size:.62rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.rec-actions{grid-column:2 / -1; display:flex; gap:16px; flex-wrap:wrap}
+.ul-group{display:flex; flex-direction:column; gap:10px}
+.ul-group h3{font-size:1.15rem; display:flex; align-items:center; gap:10px}
+.ul-group h3::before{content:""; width:10px; height:10px; border-radius:3px; background:var(--c)}
+.ul-item{padding:14px 16px; border-radius:14px; border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; gap:8px}
+.ul-item .headline{font-family:var(--f-display); font-size:1.12rem; line-height:1.35}
+.ul-item p{color:var(--muted); font-size:.93rem}
+.ul-item .row{display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap}
+.journal-item{padding:16px 18px; border-radius:14px; border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; gap:8px}
+.journal-item .prompt{font-family:var(--f-display); font-size:1.05rem; line-height:1.35; color:var(--muted)}
+.journal-item .entry{white-space:pre-wrap; border-left:3px solid var(--lamp); padding-left:12px}
+.empty{padding:22px; border-radius:16px; border:1px dashed var(--line); color:var(--muted); text-align:center; display:flex; flex-direction:column; gap:10px; align-items:center}
+.backup{padding:18px; border-radius:16px; border:1px dashed var(--line); display:flex; flex-direction:column; gap:10px}
+.backup p{color:var(--muted); font-size:.93rem}
+
+/* toast + confetti */
+.toast{position:fixed; left:50%; bottom:calc(22px + env(safe-area-inset-bottom,0px)); z-index:30; transform:translate(-50%, 16px); opacity:0; pointer-events:none;
+  display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; background:var(--surface-2); border:1px solid var(--lamp); color:var(--fg);
+  font-weight:600; font-size:.9rem; box-shadow:0 10px 30px rgba(0,0,0,.45); transition:opacity .25s, transform .25s; white-space:nowrap}
+.toast.on{opacity:1; transform:translate(-50%, 0)}
+.toast::before{content:"✓"; color:var(--lamp)}
+.toast.warn{border-color:var(--rose)}
+.toast.warn::before{content:"!"; color:var(--rose)}
+.confetti{position:absolute; left:0; right:0; top:-20px; height:460px; pointer-events:none; overflow:hidden; z-index:3}
+.confetti i{position:absolute; top:-14px; width:7px; height:12px; border-radius:2px; opacity:0; animation:fall linear forwards}
+@keyframes fall{0%{transform:translate(0,0) rotate(0); opacity:1} 80%{opacity:1} 100%{transform:translate(var(--x), 460px) rotate(var(--r)); opacity:0}}
+
+/* art fills */
+.a-sky{fill:var(--art-sky)} .a-star{fill:var(--art-star)} .a-gold{fill:var(--art-gold)} .a-gold-deep{fill:var(--art-gold-deep)}
+.a-glow{fill:var(--art-gold); opacity:.14} .a-hill{fill:var(--art-hill)} .a-hill2{fill:var(--art-hill2)}
+.a-page{fill:var(--art-page)} .a-glass{fill:var(--art-glass)} .a-heart{fill:var(--art-heart)}
+.a-clay{fill:var(--art-clay)} .a-clay2{fill:var(--art-clay2)} .a-pen{fill:var(--art-stroke)}
+.a-path{fill:var(--art-page); opacity:.75} .a-leaf{fill:var(--sage); opacity:.85}
+.s-gold{stroke:var(--art-gold); fill:none} .s-line{stroke:var(--art-line); fill:none}
+.s-stroke{stroke:var(--art-stroke); fill:none} .s-star{stroke:var(--art-star); fill:none; opacity:.75}
+.s-clay{stroke:var(--art-clay); fill:none}
+.tw{animation:twinkle 4s ease-in-out infinite}
+.tw:nth-of-type(2n){animation-delay:1.3s} .tw:nth-of-type(3n){animation-delay:2.4s}
+@keyframes twinkle{0%,100%{opacity:1} 50%{opacity:.3}}
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{animation:none !important; transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top" aria-label="Bible Quizzy">
+    <div class="top-row">
+      <span class="top-left">
+        <a class="brand" href="#library"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 21c-6-4-13-4-20-2v26c7-2 14-2 20 2 6-4 13-4 20-2V19c-7-2-14-2-20 2z" fill="#f0b860"/><path d="M32 21v26" stroke="#0d1322" stroke-width="2.5"/></svg>Bible Quizzy</a>
+        <span class="mono" id="topTitle">· NIV</span>
+      </span>
+      <span class="top-right">
+        <span class="mono meta" id="topMeta"></span>
+        <a class="pill" id="myLink" href="#my-bible">My Bible <span class="n" id="myCount" hidden></span></a>
+      </span>
+    </div>
+    <div id="ribbonWrap" hidden>
+      <div class="ribbon" id="ribbon" aria-hidden="true"></div>
+      <div class="ribbon-labels" id="ribbonLabels" aria-hidden="true"></div>
+    </div>
+  </header>
+
+  <!-- HOME: the library -->
+  <section class="screen" id="home">
+    <div class="hero-art" id="homeArt"></div>
+    <div class="home-hero">
+      <span class="mono">66 books · Old &amp; New Testament · NIV</span>
+      <h1 class="title">Bible <em>Quizzy</em></h1>
+      <p class="lede">66 books, one story. Pick a book, read it in your Bible, then see what stuck. Every quiz has three rounds, the hard words explained, the people and places, and verses worth underlining. Your scores, underlines and notes are saved on this device.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="progress"><div class="bar"><span id="progBar" style="width:0%"></span></div><span class="mono" id="progText"></span></div>
+    <div class="stack">
+      <span class="mono" id="featLabel">Start here</span>
+      <div class="feat" id="featured"></div>
+    </div>
+    <div class="lib-tools" id="libTools">
+      <div class="tabs" id="testTabs" role="tablist" aria-label="Testament">
+        <button type="button" role="tab" data-t="ot">Old Testament<small>39</small></button>
+        <button type="button" role="tab" data-t="nt">New Testament<small>27</small></button>
+      </div>
+      <div class="lib-row">
+        <label class="search"><svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input type="search" id="search" placeholder="Find a book" aria-label="Find a book" autocomplete="off"></label>
+        <div class="seg" id="viewSeg" role="group" aria-label="View">
+          <button type="button" data-v="shelf">Shelf</button><button type="button" data-v="list">List</button>
+        </div>
+      </div>
+    </div>
+    <div class="shelves" id="shelves"></div>
+    <p class="center" id="noMatch" hidden>No book matches that. Try “Psalms” or “1 John”.</p>
+  </section>
+
+  <!-- MY BIBLE: everything saved -->
+  <section class="screen" id="mybible" hidden>
+    <a class="back" href="#library">← Library</a>
+    <div class="home-hero">
+      <span class="mono">Saved on this device</span>
+      <h1 class="title">My <em>Bible</em></h1>
+      <p class="lede">Every quiz you finish, every verse you underline and every note you write is kept here. Retake any quiz to beat your best.</p>
+    </div>
+    <div class="stats" id="myStats"></div>
+    <div class="tabs" id="myTabs" role="tablist" aria-label="Saved">
+      <button type="button" role="tab" data-tab="results">Results</button>
+      <button type="button" role="tab" data-tab="underlined">Underlined</button>
+      <button type="button" role="tab" data-tab="journal">Journal</button>
+    </div>
+    <div class="pane" id="myPane"></div>
+    <div class="backup">
+      <span class="mono">Keep it safe</span>
+      <p>Your progress lives in this browser. Download a backup file to keep it safe or move it to another phone or computer, then restore it there.</p>
+      <div class="navrow">
+        <button class="btn ghost sm" id="exportBtn" type="button">Download backup</button>
+        <button class="btn ghost sm" id="importBtn" type="button">Restore a backup</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUIZ INTRO (a whole book, or one chapter of John) -->
+  <section class="screen" id="intro" hidden>
+    <a class="back" id="introBack" href="#library">← Library</a>
+    <div class="hero-art" id="heroArt"></div>
+    <div class="stack" style="gap:10px">
+      <span class="mono" id="introEyebrow"></span>
+      <h1 class="title" id="introTitle"></h1>
+      <p class="subtitle" id="introSub" hidden></p>
+      <p class="lede" id="introLede"></p>
+    </div>
+    <div class="saved" id="savedPanel" hidden></div>
+    <div class="chapters-box" id="chWrap" hidden>
+      <span class="mono">John, chapter by chapter</span>
+      <h3>21 more quizzes, one for every chapter</h3>
+      <p class="muted" id="chText"></p>
+      <nav class="jump" id="jump" aria-label="Chapters of John"></nav>
+    </div>
+    <div class="keyverse">
+      <span class="mono" id="keyRef"></span>
+      <p id="keyText"></p>
+    </div>
+    <div class="breath">
+      <span class="dot" aria-hidden="true"></span>
+      <p id="openPrayer"></p>
+    </div>
+    <div class="stack">
+      <span class="mono" id="glanceLabel">At a glance</span>
+      <div class="glance" id="glance"></div>
+    </div>
+    <div class="stack">
+      <span class="mono" id="castLabel">People &amp; places</span>
+      <div class="cast" id="cast"></div>
+    </div>
+    <div class="stack">
+      <span class="mono">Three rounds</span>
+      <div class="rounds" id="roundChips"></div>
+    </div>
+    <div class="stack" style="gap:10px">
+      <button class="btn block" id="startBtn" type="button">Start round I</button>
+      <p class="hint" id="startHint"></p>
+    </div>
+    <div class="navrow" id="introNav"></div>
+  </section>
+
+  <!-- ROUND INTRO -->
+  <section class="screen" id="round" hidden>
+    <div class="round-hero">
+      <div class="art" id="roundArt"></div>
+      <span class="numeral" id="roundNum">I</span>
+      <h2 id="roundName">Recall</h2>
+      <p id="roundDesc"></p>
+      <span class="mono" id="roundCount"></span>
+    </div>
+    <button class="btn block" id="roundGo" type="button">Begin</button>
+  </section>
+
+  <!-- QUESTION -->
+  <section class="screen" id="quiz" hidden>
+    <div class="q-head">
+      <div class="art" id="qArt"></div>
+      <div class="stack" style="gap:2px">
+        <b id="qRound">Round I · Recall</b>
+        <span class="mono" id="qCount">Question 1 of 12</span>
+      </div>
+    </div>
+    <span class="type" id="qType">Multiple choice</span>
+    <p class="q-text" id="qText"></p>
+    <div class="look" id="look" hidden></div>
+    <div class="opts" id="opts" role="group" aria-label="Answer choices"></div>
+    <div class="fb" id="fb" hidden aria-live="polite">
+      <h3 id="fbTitle"></h3>
+      <p id="fbWhy"></p>
+      <a class="ref" id="fbRef" target="_blank" rel="noopener"></a>
+    </div>
+    <button class="btn block" id="nextBtn" type="button" hidden>Next question</button>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="screen" id="results" hidden>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <div class="score-wrap">
+      <svg class="ring" viewBox="0 0 132 132" aria-hidden="true">
+        <circle class="track" cx="66" cy="66" r="54"/>
+        <circle class="val" id="ringVal" cx="66" cy="66" r="54" stroke-dasharray="339.29" stroke-dashoffset="339.29"/>
+        <text x="66" y="70" text-anchor="middle" font-size="34" id="scoreNum">0</text>
+        <text x="66" y="90" text-anchor="middle" class="of" id="scoreOf">of 12</text>
+      </svg>
+      <div class="score-copy">
+        <span class="mono" id="resEyebrow"></span>
+        <h2 id="scoreTitle"></h2>
+        <p id="scoreMsg"></p>
+        <p class="mono" id="bestLine"></p>
+      </div>
+    </div>
+    <div class="res-actions">
+      <button class="btn" id="retakeTop" type="button">↻ Retake the quiz</button>
+      <a class="btn ghost" id="backTop" href="#library">Back</a>
+    </div>
+    <div class="history" id="historyBox">
+      <div class="history-top"><span class="mono">Your attempts</span><span class="saved-tag" id="savedTag">✓ Saved to My Bible</span></div>
+      <div class="hbars" id="hbars"></div>
+    </div>
+
+    <div class="stack">
+      <span class="mono">Review what you missed</span>
+      <ul class="missed" id="missed"></ul>
+    </div>
+
+    <div class="section-head">
+      <div class="art" id="wordsArt"></div>
+      <div class="stack" style="gap:4px">
+        <h2>Hard words, made simple</h2>
+        <p>Guess what each word means first, then tap to check.</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <span class="mono" id="wordsCount"></span>
+      <button class="linkbtn" id="wordsAll" type="button">Show all meanings</button>
+    </div>
+    <div class="words" id="words"></div>
+
+    <div class="section-head">
+      <div class="art" id="ulArt"></div>
+      <div class="stack" style="gap:4px">
+        <h2>Underline this</h2>
+        <p>Verses worth marking in your Bible, what each one means, and one way to live it out. The ones you mark are saved in My Bible.</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <span class="mono ul-count" id="ulCount"></span>
+      <a class="linkbtn" href="#my-bible/underlined">See all my underlines</a>
+    </div>
+    <div class="ul-list" id="ulList"></div>
+
+    <div class="stack" style="gap:10px; margin-top:12px">
+      <span class="mono">Sit with this</span>
+      <label for="reflect" style="font-family:var(--f-display); font-size:1.25rem; line-height:1.35" id="reflectPrompt"></label>
+      <textarea id="reflect" placeholder="Write it here. It saves on this device as you type."></textarea>
+      <div class="reflect-foot"><span class="ref" id="reflectRef"></span><span class="saved-tag" id="reflectSaved" hidden>✓ Saved</span></div>
+    </div>
+
+    <div class="quiet">
+      <span class="mono">Close in prayer</span>
+      <p id="closePrayer"></p>
+    </div>
+
+    <a class="next-up" id="nextUp" href="#library">
+      <span class="mono" id="nextLabel"></span>
+      <h3 id="nextTitle"></h3>
+      <p id="nextText"></p>
+    </a>
+
+    <div class="navrow" id="navRow"></div>
+    <button class="btn ghost block" id="retake" type="button">↻ Retake the quiz</button>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/art.js?v=3"></script>
+<script src="js/catalog.js?v=3"></script>
+<script src="js/john-chapters.js?v=3"></script>
+<script src="js/books-law.js?v=3"></script>
+<script src="js/books-history.js?v=3"></script>
+<script src="js/books-history2.js?v=3"></script>
+<script src="js/books-wisdom.js?v=3"></script>
+<script src="js/books-major.js?v=3"></script>
+<script src="js/books-minor.js?v=3"></script>
+<script src="js/books-minor2.js?v=3"></script>
+<script src="js/books-gospels.js?v=3"></script>
+<script src="js/books-paul.js?v=3"></script>
+<script src="js/books-paul2.js?v=3"></script>
+<script src="js/books-general.js?v=3"></script>
+<script src="js/books-general2.js?v=3"></script>
+<script src="js/app.js?v=3"></script>
+</body>
+</html>
