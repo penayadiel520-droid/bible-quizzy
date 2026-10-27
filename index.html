@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Bible Quizzy</title>
-<meta name="description" content="Quizzes for all 66 books of the Bible, Old and New Testament, plus John chapter by chapter. Your scores, underlined verses and notes save on your device.">
+<meta name="description" content="A quiz for every book and every chapter of the Bible, Old and New Testament. Your scores, underlined verses and notes save on your device.">
 <meta name="theme-color" content="#0d1322">
 <meta property="og:title" content="Bible Quizzy">
 <meta property="og:description" content="66 books. One story. Read a book of the Bible, then see what stuck.">
@@ -416,6 +416,17 @@ a.next-up:hover{border-color:var(--lamp)}
 .backup{padding:18px; border-radius:16px; border:1px dashed var(--line); display:flex; flex-direction:column; gap:10px}
 .backup p{color:var(--muted); font-size:.93rem}
 
+/* chapters */
+.jump .soon{min-width:2.6rem; padding:7px 0; text-align:center; border-radius:10px; border:1px dashed var(--line); color:var(--muted); font-family:var(--f-mono); font-size:.8rem; opacity:.45; cursor:default}
+.jump a.next{border-color:var(--lamp); color:var(--lamp); background:var(--lamp-soft)}
+.chapters-box .btn{align-self:flex-start; text-align:left}
+.spine .pg{position:absolute; left:5px; bottom:3px; height:2px; width:calc((100% - 10px) * var(--f)); background:var(--lamp); border-radius:1px}
+.jumpto{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; border-radius:14px; border:1px solid var(--lamp); background:var(--lamp-soft); color:var(--fg); text-decoration:none; font-size:.98rem}
+.jumpto:hover{filter:brightness(1.08)}
+.jumpto b{color:var(--lamp)}
+.top.loading::after{content:""; position:absolute; left:0; bottom:-1px; height:2px; background:var(--lamp); animation:loadbar 1s ease-in-out infinite}
+@keyframes loadbar{0%{left:0; width:8%} 50%{left:35%; width:40%} 100%{left:100%; width:0}}
+
 /* toast + confetti */
 .toast{position:fixed; left:50%; bottom:calc(22px + env(safe-area-inset-bottom,0px)); z-index:30; transform:translate(-50%, 16px); opacity:0; pointer-events:none;
   display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; background:var(--surface-2); border:1px solid var(--lamp); color:var(--fg);
@@ -469,9 +480,9 @@ a.next-up:hover{border-color:var(--lamp)}
   <section class="screen" id="home">
     <div class="hero-art" id="homeArt"></div>
     <div class="home-hero">
-      <span class="mono">66 books · Old &amp; New Testament · NIV</span>
+      <span class="mono">66 books · 1,189 chapters · NIV</span>
       <h1 class="title">Bible <em>Quizzy</em></h1>
-      <p class="lede">66 books, one story. Pick a book, read it in your Bible, then see what stuck. Every quiz has three rounds, the hard words explained, the people and places, and verses worth underlining. Your scores, underlines and notes are saved on this device.</p>
+      <p class="lede">66 books, one story. Pick a book or a single chapter, read it in your Bible, then see what stuck. Every book and every chapter has its own quiz, with three rounds, the hard words explained, the people and places, and verses worth underlining. Your scores, underlines and notes are saved on this device.</p>
     </div>
     <div class="stats" id="stats"></div>
     <div class="progress"><div class="bar"><span id="progBar" style="width:0%"></span></div><span class="mono" id="progText"></span></div>
@@ -486,11 +497,12 @@ a.next-up:hover{border-color:var(--lamp)}
       </div>
       <div class="lib-row">
         <label class="search"><svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-          <input type="search" id="search" placeholder="Find a book" aria-label="Find a book" autocomplete="off"></label>
+          <input type="search" id="search" placeholder="Find a book or chapter, like Psalm 23" aria-label="Find a book or chapter" autocomplete="off"></label>
         <div class="seg" id="viewSeg" role="group" aria-label="View">
           <button type="button" data-v="shelf">Shelf</button><button type="button" data-v="list">List</button>
         </div>
       </div>
+      <a class="jumpto" id="jumpTo" href="#library" hidden></a>
     </div>
     <div class="shelves" id="shelves"></div>
     <p class="center" id="noMatch" hidden>No book matches that. Try “Psalms” or “1 John”.</p>
@@ -534,10 +546,11 @@ a.next-up:hover{border-color:var(--lamp)}
     </div>
     <div class="saved" id="savedPanel" hidden></div>
     <div class="chapters-box" id="chWrap" hidden>
-      <span class="mono">John, chapter by chapter</span>
-      <h3>21 more quizzes, one for every chapter</h3>
+      <span class="mono" id="chEyebrow">Chapter by chapter</span>
+      <h3 id="chHead"></h3>
       <p class="muted" id="chText"></p>
-      <nav class="jump" id="jump" aria-label="Chapters of John"></nav>
+      <nav class="jump" id="jump" aria-label="Chapters"></nav>
+      <a class="btn sm" id="chNext" href="#library" hidden></a>
     </div>
     <div class="keyverse">
       <span class="mono" id="keyRef"></span>
@@ -681,21 +694,21 @@ a.next-up:hover{border-color:var(--lamp)}
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="js/art.js?v=3"></script>
-<script src="js/catalog.js?v=3"></script>
-<script src="js/john-chapters.js?v=3"></script>
-<script src="js/books-law.js?v=3"></script>
-<script src="js/books-history.js?v=3"></script>
-<script src="js/books-history2.js?v=3"></script>
-<script src="js/books-wisdom.js?v=3"></script>
-<script src="js/books-major.js?v=3"></script>
-<script src="js/books-minor.js?v=3"></script>
-<script src="js/books-minor2.js?v=3"></script>
-<script src="js/books-gospels.js?v=3"></script>
-<script src="js/books-paul.js?v=3"></script>
-<script src="js/books-paul2.js?v=3"></script>
-<script src="js/books-general.js?v=3"></script>
-<script src="js/books-general2.js?v=3"></script>
-<script src="js/app.js?v=3"></script>
+<script src="js/art.js?v=5"></script>
+<script src="js/catalog.js?v=5"></script>
+<script src="js/books-law.js?v=5"></script>
+<script src="js/books-history.js?v=5"></script>
+<script src="js/books-history2.js?v=5"></script>
+<script src="js/books-wisdom.js?v=5"></script>
+<script src="js/books-major.js?v=5"></script>
+<script src="js/books-minor.js?v=5"></script>
+<script src="js/books-minor2.js?v=5"></script>
+<script src="js/books-gospels.js?v=5"></script>
+<script src="js/books-paul.js?v=5"></script>
+<script src="js/books-paul2.js?v=5"></script>
+<script src="js/books-general.js?v=5"></script>
+<script src="js/books-general2.js?v=5"></script>
+<script src="js/chapter-index.js?v=5"></script>
+<script src="js/app.js?v=5"></script>
 </body>
 </html>

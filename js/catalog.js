@@ -91,6 +91,11 @@ window.BQ_BOOKS = [
   { id: "revelation",      name: "Revelation",       g: "prophecy", ch: 22,  icon: "throne",     tag: "Jesus wins" }
 ];
 
-/* Book quizzes register themselves here (see js/books-*.js). */
+/* Book quizzes register themselves here (see js/books-*.js). Chapter quizzes live in data/<book>/<chapter>.js
+   and register with BQ.chapter when the app loads one. */
 window.BQ_QUIZZES = [];
-window.BQ = { book: (q) => window.BQ_QUIZZES.push(q) };
+window.BQ_CHAPTER_DATA = {};
+window.BQ = {
+  book: (q) => window.BQ_QUIZZES.push(q),
+  chapter: (d) => { window.BQ_CHAPTER_DATA[d.book + "-" + d.ch] = d; }
+};
