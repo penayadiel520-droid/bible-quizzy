@@ -19,7 +19,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const TYPE_LABEL = { mc: "Multiple choice", tf: "True or false", fill: "Fill the blank" };
 const TESTAMENT = { ot: "Old Testament", nt: "New Testament" };
-const DATA_V = "5";
+const DATA_V = "6";
 
 const GROUPS = window.BQ_GROUPS;
 const GROUP = {};
