@@ -67,6 +67,7 @@ button{font:inherit; color:inherit}
 .top-row .meta{font-variant-numeric:tabular-nums; text-align:right}
 .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--fg); text-decoration:none; font-weight:600; font-size:.85rem; white-space:nowrap}
 .pill:hover{border-color:var(--lamp); color:var(--lamp)}
+button.pill{appearance:none; cursor:pointer; font-family:var(--f-mono); letter-spacing:.04em}
 .pill .n{font-family:var(--f-mono); font-size:.68rem; color:var(--on-lamp); background:var(--lamp); border-radius:999px; padding:1px 7px; font-weight:500}
 #ribbonWrap{margin-top:10px}
 .ribbon{display:flex; gap:2px; align-items:flex-end; height:12px}
@@ -467,7 +468,8 @@ a.next-up:hover{border-color:var(--lamp)}
       </span>
       <span class="top-right">
         <span class="mono meta" id="topMeta"></span>
-        <a class="pill" id="myLink" href="#my-bible">My Bible <span class="n" id="myCount" hidden></span></a>
+        <button class="pill" id="langToggle" type="button"></button>
+        <a class="pill" id="myLink" href="#my-bible"><span id="myLinkText">My Bible</span> <span class="n" id="myCount" hidden></span></a>
       </span>
     </div>
     <div id="ribbonWrap" hidden>
@@ -480,9 +482,9 @@ a.next-up:hover{border-color:var(--lamp)}
   <section class="screen" id="home">
     <div class="hero-art" id="homeArt"></div>
     <div class="home-hero">
-      <span class="mono">66 books · 1,189 chapters · NIV</span>
+      <span class="mono" id="homeTagline">66 books · 1,189 chapters · NIV</span>
       <h1 class="title">Bible <em>Quizzy</em></h1>
-      <p class="lede">66 books, one story. Pick a book or a single chapter, read it in your Bible, then see what stuck. Every book and every chapter has its own quiz, with three rounds, the hard words explained, the people and places, and verses worth underlining. Your scores, underlines and notes are saved on this device.</p>
+      <p class="lede" id="homeLedeText">66 books, one story. Pick a book or a single chapter, read it in your Bible, then see what stuck. Every book and every chapter has its own quiz, with three rounds, the hard words explained, the people and places, and verses worth underlining. Your scores, underlines and notes are saved on this device.</p>
     </div>
     <div class="stats" id="stats"></div>
     <div class="progress"><div class="bar"><span id="progBar" style="width:0%"></span></div><span class="mono" id="progText"></span></div>
@@ -492,8 +494,8 @@ a.next-up:hover{border-color:var(--lamp)}
     </div>
     <div class="lib-tools" id="libTools">
       <div class="tabs" id="testTabs" role="tablist" aria-label="Testament">
-        <button type="button" role="tab" data-t="ot">Old Testament<small>39</small></button>
-        <button type="button" role="tab" data-t="nt">New Testament<small>27</small></button>
+        <button type="button" role="tab" data-t="ot"><span class="lbl">Old Testament</span><small>39</small></button>
+        <button type="button" role="tab" data-t="nt"><span class="lbl">New Testament</span><small>27</small></button>
       </div>
       <div class="lib-row">
         <label class="search"><svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -510,22 +512,22 @@ a.next-up:hover{border-color:var(--lamp)}
 
   <!-- MY BIBLE: everything saved -->
   <section class="screen" id="mybible" hidden>
-    <a class="back" href="#library">← Library</a>
+    <a class="back" id="mybibleBack" href="#library">← Library</a>
     <div class="home-hero">
-      <span class="mono">Saved on this device</span>
-      <h1 class="title">My <em>Bible</em></h1>
-      <p class="lede">Every quiz you finish, every verse you underline and every note you write is kept here. Retake any quiz to beat your best.</p>
+      <span class="mono" id="mybibleTagline">Saved on this device</span>
+      <h1 class="title" id="mybibleTitle">My <em>Bible</em></h1>
+      <p class="lede" id="mybibleLedeText">Every quiz you finish, every verse you underline and every note you write is kept here. Retake any quiz to beat your best.</p>
     </div>
     <div class="stats" id="myStats"></div>
     <div class="tabs" id="myTabs" role="tablist" aria-label="Saved">
-      <button type="button" role="tab" data-tab="results">Results</button>
-      <button type="button" role="tab" data-tab="underlined">Underlined</button>
-      <button type="button" role="tab" data-tab="journal">Journal</button>
+      <button type="button" role="tab" data-tab="results"><span class="lbl">Results</span></button>
+      <button type="button" role="tab" data-tab="underlined"><span class="lbl">Underlined</span></button>
+      <button type="button" role="tab" data-tab="journal"><span class="lbl">Journal</span></button>
     </div>
     <div class="pane" id="myPane"></div>
     <div class="backup">
-      <span class="mono">Keep it safe</span>
-      <p>Your progress lives in this browser. Download a backup file to keep it safe or move it to another phone or computer, then restore it there.</p>
+      <span class="mono" id="backupLabel">Keep it safe</span>
+      <p id="backupText">Your progress lives in this browser. Download a backup file to keep it safe or move it to another phone or computer, then restore it there.</p>
       <div class="navrow">
         <button class="btn ghost sm" id="exportBtn" type="button">Download backup</button>
         <button class="btn ghost sm" id="importBtn" type="button">Restore a backup</button>
@@ -569,7 +571,7 @@ a.next-up:hover{border-color:var(--lamp)}
       <div class="cast" id="cast"></div>
     </div>
     <div class="stack">
-      <span class="mono">Three rounds</span>
+      <span class="mono" id="threeRoundsLabel">Three rounds</span>
       <div class="rounds" id="roundChips"></div>
     </div>
     <div class="stack" style="gap:10px">
@@ -634,20 +636,20 @@ a.next-up:hover{border-color:var(--lamp)}
       <a class="btn ghost" id="backTop" href="#library">Back</a>
     </div>
     <div class="history" id="historyBox">
-      <div class="history-top"><span class="mono">Your attempts</span><span class="saved-tag" id="savedTag">✓ Saved to My Bible</span></div>
+      <div class="history-top"><span class="mono" id="yourAttemptsLabel">Your attempts</span><span class="saved-tag" id="savedTag">✓ Saved to My Bible</span></div>
       <div class="hbars" id="hbars"></div>
     </div>
 
     <div class="stack">
-      <span class="mono">Review what you missed</span>
+      <span class="mono" id="reviewMissedLabel">Review what you missed</span>
       <ul class="missed" id="missed"></ul>
     </div>
 
     <div class="section-head">
       <div class="art" id="wordsArt"></div>
       <div class="stack" style="gap:4px">
-        <h2>Hard words, made simple</h2>
-        <p>Guess what each word means first, then tap to check.</p>
+        <h2 id="hardWordsHeading">Hard words, made simple</h2>
+        <p id="hardWordsSub">Guess what each word means first, then tap to check.</p>
       </div>
     </div>
     <div class="toolbar">
@@ -659,25 +661,25 @@ a.next-up:hover{border-color:var(--lamp)}
     <div class="section-head">
       <div class="art" id="ulArt"></div>
       <div class="stack" style="gap:4px">
-        <h2>Underline this</h2>
-        <p>Verses worth marking in your Bible, what each one means, and one way to live it out. The ones you mark are saved in My Bible.</p>
+        <h2 id="underlineHeading">Underline this</h2>
+        <p id="underlineSub">Verses worth marking in your Bible, what each one means, and one way to live it out. The ones you mark are saved in My Bible.</p>
       </div>
     </div>
     <div class="toolbar">
       <span class="mono ul-count" id="ulCount"></span>
-      <a class="linkbtn" href="#my-bible/underlined">See all my underlines</a>
+      <a class="linkbtn" id="seeAllUnderlinesLink" href="#my-bible/underlined">See all my underlines</a>
     </div>
     <div class="ul-list" id="ulList"></div>
 
     <div class="stack" style="gap:10px; margin-top:12px">
-      <span class="mono">Sit with this</span>
+      <span class="mono" id="sitWithThisLabel">Sit with this</span>
       <label for="reflect" style="font-family:var(--f-display); font-size:1.25rem; line-height:1.35" id="reflectPrompt"></label>
       <textarea id="reflect" placeholder="Write it here. It saves on this device as you type."></textarea>
       <div class="reflect-foot"><span class="ref" id="reflectRef"></span><span class="saved-tag" id="reflectSaved" hidden>✓ Saved</span></div>
     </div>
 
     <div class="quiet">
-      <span class="mono">Close in prayer</span>
+      <span class="mono" id="closeInPrayerLabel">Close in prayer</span>
       <p id="closePrayer"></p>
     </div>
 
@@ -695,7 +697,8 @@ a.next-up:hover{border-color:var(--lamp)}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="js/art.js?v=5"></script>
-<script src="js/catalog.js?v=5"></script>
+<script src="js/catalog.js?v=6"></script>
+<script src="js/i18n.js?v=1"></script>
 <script src="js/books-law.js?v=5"></script>
 <script src="js/books-history.js?v=5"></script>
 <script src="js/books-history2.js?v=5"></script>
@@ -709,6 +712,6 @@ a.next-up:hover{border-color:var(--lamp)}
 <script src="js/books-general.js?v=5"></script>
 <script src="js/books-general2.js?v=5"></script>
 <script src="js/chapter-index.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/app.js?v=11"></script>
 </body>
 </html>

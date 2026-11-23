@@ -17,9 +17,8 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const TYPE_LABEL = { mc: "Multiple choice", tf: "True or false", fill: "Fill the blank" };
-const TESTAMENT = { ot: "Old Testament", nt: "New Testament" };
 const DATA_V = "10";
+const locale = () => (LANG === "es" ? "es" : "en");
 
 const GROUPS = window.BQ_GROUPS;
 const GROUP = {};
@@ -28,7 +27,7 @@ const BOOKS = window.BQ_BOOKS;
 const BOOK = {};
 BOOKS.forEach((b, i) => { b.n = i + 1; b.group = GROUP[b.g]; b.t = b.group.t; BOOK[b.id] = b; });
 const TOTAL_CHAPTERS = BOOKS.reduce((a, b) => a + b.ch, 0);
-const chapterName = (b, n) => (b.id === "psalms" ? "Psalm" : b.name) + " " + n;
+const chapterName = (b, n) => (b.id === "psalms" ? t("psalmName") : b.name) + " " + n;
 const range = (a, b) => (a === b ? String(a) : a + "–" + b);
 
 /* Chapter index: what exists, without loading it. Entries are quiz "metas". */
@@ -48,23 +47,23 @@ const BOOK_QUIZZES = [];
 
 function bookRounds(b) {
   return [
-    { numeral: "I", name: "Recall", tag: "What happened?", art: "scroll", desc: `The big moments of ${b.name}. If you've read it, you've got these.` },
-    { numeral: "II", name: "Understand", tag: "What does it mean?", art: "lamp", desc: "The meaning behind the story. Some of these are tricky on purpose." },
-    { numeral: "III", name: "Go deeper", tag: "Why does it matter?", art: "book", desc: `How ${b.name} connects to the rest of the Bible. Use the Look it up links.` }
+    { numeral: "I", name: t("roundName", 1), tag: t("roundTagBook1"), art: "scroll", desc: t("roundDescBook1", b.name) },
+    { numeral: "II", name: t("roundName", 2), tag: t("roundTag2"), art: "lamp", desc: t("roundDescBook2") },
+    { numeral: "III", name: t("roundName", 3), tag: t("roundTag3"), art: "book", desc: t("roundDesc3", b.name) }
   ];
 }
 function chapterRounds(name) {
   return [
-    { numeral: "I", name: "Recall", tag: "What did it say?", art: "scroll", desc: `Straight from ${name}. If you read it carefully, you've got these.` },
-    { numeral: "II", name: "Understand", tag: "What does it mean?", art: "lamp", desc: "The meaning behind the words. Some of these are tricky on purpose." },
-    { numeral: "III", name: "Go deeper", tag: "Why does it matter?", art: "book", desc: `How ${name} connects to the rest of the Bible. Use the Look it up links.` }
+    { numeral: "I", name: t("roundName", 1), tag: t("roundTagChapter1"), art: "scroll", desc: t("roundDescChapter1", name) },
+    { numeral: "II", name: t("roundName", 2), tag: t("roundTag2"), art: "lamp", desc: t("roundDescChapter2") },
+    { numeral: "III", name: t("roundName", 3), tag: t("roundTag3"), art: "book", desc: t("roundDesc3", name) }
   ];
 }
 function normQuestion(q) {
   const type = q.t || (q.tf !== undefined ? "tf" : q.q.indexOf("____") >= 0 ? "fill" : "mc");
   return {
     round: q.r, type, art: q.art || null, verses: q.v || q.ch || [], ref: q.ref, q: q.q,
-    options: type === "tf" ? ["True", "False"] : q.o,
+    options: type === "tf" ? [t("answerTrue"), t("answerFalse")] : q.o,
     answer: type === "tf" ? (q.tf ? 0 : 1) : 0,
     why: q.why, look: q.look || null
   };
@@ -72,7 +71,7 @@ function normQuestion(q) {
 const normCast = (cast) => (cast || []).map(([name, kind, ref, who, read]) => ({ name, kind, ref, who, read }));
 const normSections = (sections, byVerse) => sections.map(([from, to, name, summary]) => ({
   from, to, name, summary,
-  label: (byVerse ? (from === to ? "v. " : "vv. ") : (from === to ? "Ch. " : "Chs. ")) + range(from, to),
+  label: (byVerse ? (from === to ? t("labelVerseSingular") : t("labelVersePlural")) : (from === to ? t("labelChapterSingular") : t("labelChapterPlural"))) + range(from, to),
   short: range(from, to) + " · " + name
 }));
 function normBook(d) {
@@ -123,6 +122,19 @@ function normChapter(raw) {
   QUIZ[b.quiz.key] = b.quiz;
 });
 BOOKS.forEach((b) => { if (b.quiz) BOOK_QUIZZES.push(b.quiz); });
+
+/* Language switch re-derives everything that was translated when first built:
+   each book's chapter-list display names, and any already-loaded quiz's name
+   and round labels. (The book/group objects themselves are refreshed in place
+   by applyBookLanguage(), called from setLang().) */
+function refreshLanguageDependentData() {
+  BOOKS.forEach((b) => { b.chapterList.forEach((c) => { c.name = chapterName(b, c.chapter); }); });
+  Object.keys(QUIZ).forEach((k) => {
+    const z = QUIZ[k];
+    if (z.kind === "book") { z.name = z.book.name; z.rounds = bookRounds(z.book); }
+    else { z.name = chapterName(z.book, z.chapter); z.rounds = chapterRounds(z.name); }
+  });
+}
 
 const loading = {};
 function loadChapter(bookId, n) {
@@ -203,7 +215,7 @@ function bookState(b) {
 const dayKey = (ts) => { const d = new Date(ts); return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); };
 function fmtDate(ts) {
   const d = new Date(ts), now = new Date();
-  return d.toLocaleDateString(undefined, d.getFullYear() === now.getFullYear() ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(locale(), d.getFullYear() === now.getFullYear() ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
 }
 function allStats() {
   let marks = 0;
@@ -221,10 +233,10 @@ function allStats() {
   return { books, chapters, marks, streak };
 }
 const statTiles = (s) => [
-  [s.books + '<small style="font-size:.9rem;color:var(--muted)"> / 66</small>', "Books done"],
-  [s.chapters + `<small style="font-size:.9rem;color:var(--muted)"> / ${TOTAL_CHAPTERS.toLocaleString()}</small>`, s.chapters === 1 ? "Chapter done" : "Chapters done"],
-  [s.marks, s.marks === 1 ? "Verse underlined" : "Verses underlined"],
-  [s.streak, "Day streak"]
+  [s.books + `<small style="font-size:.9rem;color:var(--muted)"> / 66</small>`, t("statsBooksDone")],
+  [s.chapters + `<small style="font-size:.9rem;color:var(--muted)"> / ${TOTAL_CHAPTERS.toLocaleString(locale())}</small>`, s.chapters === 1 ? t("statsChapterDone") : t("statsChaptersDone")],
+  [s.marks, s.marks === 1 ? t("statsVerseUnderlined") : t("statsVersesUnderlined")],
+  [s.streak, t("statsDayStreak")]
 ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
 
 let toastTimer;
@@ -237,11 +249,14 @@ function toast(msg, warn) {
   toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
 }
 
-/* Bible Gateway (NIV) link for a reference like "John 3:14–15 · Numbers 21:4–9" */
+/* Bible Gateway link for a reference like "John 3:14–15 · Numbers 21:4–9".
+   The quiz text itself is NIV/English either way; in Spanish mode this just
+   sends the reader to the same reference in the NVI so the linked verse
+   reads in their language. */
 function bgUrl(ref) {
   const parts = String(ref).split(/\s*(?:·|→)\s*/).filter((p) => /\d/.test(p));
   const q = parts.join("; ").replace(/[–—]/g, "-");
-  return "https://www.biblegateway.com/passage/?search=" + encodeURIComponent(q) + "&version=NIV";
+  return "https://www.biblegateway.com/passage/?search=" + encodeURIComponent(q) + "&version=" + (LANG === "es" ? "NVI" : "NIV");
 }
 const linkTo = (ref, label) => `<a href="${bgUrl(ref)}" target="_blank" rel="noopener">${esc(label || ref)} ↗</a>`;
 const refLink = (r) => `<a class="ref" href="${bgUrl(r)}" target="_blank" rel="noopener">${esc(r)} ↗</a>`;
@@ -275,12 +290,12 @@ const seen = new Set();
 function renderHome(tab) {
   CH = null; KEY = "";
   if (tab) { TAB = tab; store.set("bq", "tab", tab); }
-  document.title = "Bible Quizzy · a quiz for every book and chapter of the Bible";
-  $("#topTitle").textContent = "· NIV";
+  document.title = "Bible Quizzy · " + t("appTagline");
+  $("#topTitle").textContent = t("bibleVersion");
   $("#homeArt").innerHTML = BASE_ART.library;
   const s = allStats();
   $("#stats").innerHTML = statTiles(s);
-  $("#progText").textContent = s.chapters.toLocaleString() + " of " + TOTAL_CHAPTERS.toLocaleString() + " chapters";
+  $("#progText").textContent = t("progressChapters", s.chapters.toLocaleString(locale()), TOTAL_CHAPTERS.toLocaleString(locale()));
   $("#progBar").style.width = "0%";
   requestAnimationFrame(() => requestAnimationFrame(() => { $("#progBar").style.width = Math.max(s.chapters ? 0.6 : 0, 100 * s.chapters / TOTAL_CHAPTERS) + "%"; }));
   renderFeatured();
@@ -290,12 +305,12 @@ function renderHome(tab) {
 
 function quizCard(meta, kind, eyebrow) {
   const best = bestK(meta.key), p = progK(meta.key, meta.nq);
-  const badge = p ? `<span class="badge new">Resume · Q${p.picks.length + 1}</span>`
-    : best != null ? `<span class="badge done">Best ${best}/${meta.nq}</span>`
-    : `<span class="badge new">${kind === "start" ? "Start here" : "Up next"}</span>`;
-  const eb = eyebrow || (meta.kind === "book" ? `${meta.book.name} · whole book` : `${meta.name} · ${meta.verses} verses`);
+  const badge = p ? `<span class="badge new">${esc(t("resumeQ", p.picks.length + 1))}</span>`
+    : best != null ? `<span class="badge done">${esc(t("best", best, meta.nq))}</span>`
+    : `<span class="badge new">${esc(kind === "start" ? t("startHereBadge") : t("upNextBadge"))}</span>`;
+  const eb = eyebrow || (meta.kind === "book" ? t("wholeBook", meta.book.name) : t("chapterVerses", meta.name, meta.verses));
   const title = meta.kind === "book" ? `${meta.book.name}: ${meta.title}` : `${meta.name}: ${meta.title}`;
-  const text = meta.overview || `Read ${meta.name} in your Bible, then take its ${meta.nq}-question quiz. ${meta.book.name}: ${meta.book.tag.toLowerCase()}.`;
+  const text = meta.overview || t("cardFallbackText", meta.name, meta.nq, meta.book.name, meta.book.tag.toLowerCase());
   return `<a class="ch-card feature" href="#${meta.route}">
     <div class="ch-top"><span class="mono">${esc(eb)}</span>${badge}</div>
     <h3>${esc(title)}</h3><p>${esc(text)}</p></a>`;
@@ -319,13 +334,13 @@ function nextUntaken(meta) {
 function renderFeatured() {
   const recent = quizMeta(store.get("bq", "recent", ""));
   const cards = [];
-  let label = "Up next";
-  if (recent && progK(recent.key, recent.nq)) { label = "Pick up where you left off"; cards.push(quizCard(recent, "resume")); }
+  let label = t("upNextLabel");
+  if (recent && progK(recent.key, recent.nq)) { label = t("pickUpWhereLeftOff"); cards.push(quizCard(recent, "resume")); }
   else if (recent) {
     const nxt = nextUntaken(recent);
     if (nxt) {
-      label = nxt.key === recent.key ? "Keep going" : "Up next";
-      cards.push(quizCard(nxt, "next", nxt.kind === "chapter" && nxt.book === recent.book && nxt.key !== recent.key ? `Keep going in ${nxt.book.name}` : null));
+      label = nxt.key === recent.key ? t("keepGoing") : t("upNextLabel");
+      cards.push(quizCard(nxt, "next", nxt.kind === "chapter" && nxt.book === recent.book && nxt.key !== recent.key ? t("keepGoingIn", nxt.book.name) : null));
     }
   }
   if (!cards.length) {
@@ -334,22 +349,22 @@ function renderFeatured() {
     if (partial) {
       const doneList = partial.chapterList.filter((c) => bestK(c.key) != null);
       const nxt = doneList.length ? nextUntaken(doneList[doneList.length - 1]) : null;
-      if (nxt) { label = "Pick up where you left off"; cards.push(quizCard(nxt, "next", `Keep going in ${partial.name}`)); }
+      if (nxt) { label = t("pickUpWhereLeftOff"); cards.push(quizCard(nxt, "next", t("keepGoingIn", partial.name))); }
     }
     if (!savedQuizKeys().some((k) => bestK(k) != null) || !cards.length) {
       const g1 = BOOK.genesis.chapterMap[1] || quizMeta("book-genesis"), j1 = BOOK.john.chapterMap[1] || quizMeta("book-john");
-      if (!cards.length) label = savedQuizKeys().some((k) => bestK(k) != null) ? "Up next" : "Start here";
+      if (!cards.length) label = savedQuizKeys().some((k) => bestK(k) != null) ? t("upNextLabel") : t("startHere");
       if (!cards.length && savedQuizKeys().some((k) => bestK(k) != null)) {
         const any = BOOKS.map((b) => b.chapterList.find((c) => bestK(c.key) == null)).find(Boolean);
         if (any) cards.push(quizCard(any, "next"));
       } else {
-        if (g1 && bestK(g1.key) == null && cards.length < 2) cards.push(quizCard(g1, "start", "Start at the beginning"));
-        if (j1 && bestK(j1.key) == null && cards.length < 2) cards.push(quizCard(j1, "start", "Start with Jesus"));
+        if (g1 && bestK(g1.key) == null && cards.length < 2) cards.push(quizCard(g1, "start", t("startAtBeginning")));
+        if (j1 && bestK(j1.key) == null && cards.length < 2) cards.push(quizCard(j1, "start", t("startWithJesus")));
       }
     }
   }
-  $("#featLabel").textContent = cards.length ? label : "You've done them all";
-  $("#featured").innerHTML = cards.join("") || `<p class="lede">You've taken every quiz. Retake any of them to beat your best score.</p>`;
+  $("#featLabel").textContent = cards.length ? label : t("youveDoneThemAll");
+  $("#featured").innerHTML = cards.join("") || `<p class="lede">${esc(t("youveTakenEvery"))}</p>`;
 }
 
 const ALIASES = { "song of solomon": "song-of-songs", "canticles": "song-of-songs", "revelations": "revelation", "acts of the apostles": "acts", "psalm": "psalms" };
@@ -382,17 +397,17 @@ function spine(b, st) {
   const w = Math.round(32 + Math.min(b.ch, 60) * 0.25);
   const h = Math.min(170, Math.max(118 + (hashN(b.id) % 5) * 9, Math.round(b.name.length * 8.2) + 52));
   const frac = b.ch > 1 && st.state !== "done" ? st.done / b.ch : 0;
-  const tip = b.name + " · " + b.tag + (best != null ? ` · book quiz best ${best}/${z.questions.length}` : "") + (b.ch > 1 && st.done ? ` · ${st.done} of ${b.ch} chapters done` : "");
-  const label = `${b.name}, ${b.ch} chapter${b.ch > 1 ? "s" : ""}${st.state === "done" ? ", done" : st.state === "started" ? ", started" : ""}`;
+  const tip = b.name + " · " + b.tag + (best != null ? t("tipBest", best, z.questions.length) : "") + (b.ch > 1 && st.done ? t("tipChaptersDone", st.done, b.ch) : "");
+  const label = t("ariaBook", b.name, b.ch) + (st.state === "done" ? t("ariaDone") : st.state === "started" ? t("ariaStarted") : "");
   return `<div class="slot"><a class="spine ${st.state}" href="#${b.id}" style="--w:${w}px;--h:${h}px" title="${esc(tip)}" aria-label="${esc(label)}">` +
     `${st.state ? '<i class="bm"></i>' : ""}<span class="nm">${esc(b.name)}</span><span class="mk">${st.state === "done" ? "✓" : b.ch}</span>` +
     `${frac > 0 ? `<i class="pg" style="--f:${frac.toFixed(3)}"></i>` : ""}</a></div>`;
 }
 function bookRow(b, st) {
   const z = b.quiz, best = z ? bestOf(z) : null;
-  const badge = best != null ? `<span class="badge done">Best ${best}/${z.questions.length}</span>`
-    : st.done ? `<span class="badge new">${st.done}/${b.ch} ch.</span>`
-    : st.state ? `<span class="badge new">Started</span>` : `<span class="badge">${b.ch} ch.</span>`;
+  const badge = best != null ? `<span class="badge done">${esc(t("rowBest", best, z.questions.length))}</span>`
+    : st.done ? `<span class="badge new">${esc(t("rowChaptersOf", st.done, b.ch))}</span>`
+    : st.state ? `<span class="badge new">${esc(t("rowStarted"))}</span>` : `<span class="badge">${esc(t("rowChapterCount", b.ch))}</span>`;
   return `<a class="brow" href="#${b.id}"><div><b>${esc(b.name)}</b><span>${esc(b.tag)}</span></div>${badge}</a>`;
 }
 function renderShelves() {
@@ -408,7 +423,7 @@ function renderShelves() {
   jt.hidden = !jumpTo;
   if (jumpTo) {
     jt.href = "#" + jumpTo.route;
-    jt.innerHTML = `<span>Open the <b>${esc(jumpTo.name)}</b> quiz${jumpTo.title ? `: ${esc(jumpTo.title)}` : ""}</span><span aria-hidden="true">→</span>`;
+    jt.innerHTML = `<span>${t("openTheQuiz", esc(jumpTo.name), jumpTo.title ? esc(jumpTo.title) : "")}</span><span aria-hidden="true">→</span>`;
   }
   const states = {};
   BOOKS.forEach((b) => { states[b.id] = bookState(b); });
@@ -420,7 +435,7 @@ function renderShelves() {
     count += books.length;
     const done = all.filter((b) => states[b.id].state === "done").length;
     return `<section class="shelf" style="--c:${g.color};--ink:${g.ink}">
-      <div class="shelf-head"><div><h2>${esc(g.name)}</h2><p>${esc(g.desc)}</p></div><span class="mono">${done} of ${all.length} done</span></div>
+      <div class="shelf-head"><div><h2>${esc(g.name)}</h2><p>${esc(g.desc)}</p></div><span class="mono">${esc(t("doneOf", done, all.length))}</span></div>
       ${view === "list" ? `<div class="blist">${books.map((b) => bookRow(b, states[b.id])).join("")}</div>` : `<div class="spines">${books.map((b) => spine(b, states[b.id])).join("")}</div>`}
     </section>`;
   }).join("");
@@ -432,8 +447,8 @@ function renderShelves() {
 function bannerFor(b, z) {
   const g = b.group, chq = z && z.kind === "chapter";
   const meta = chq
-    ? [TESTAMENT[g.t], b.name, `Chapter ${z.chapter} of ${b.ch}`, `${z.verses} verses`]
-    : [TESTAMENT[g.t], g.name, `Book ${b.n} of 66`, `${b.ch} chapter${b.ch > 1 ? "s" : ""}`];
+    ? [t("testament", g.t), b.name, t("bookChapterOf", z.chapter, b.ch), t("verses", z.verses)]
+    : [t("testament", g.t), g.name, t("bookOf66", b.n), t("chapters", b.ch)];
   return `<div class="banner" style="--c:${g.color};--ink:${g.ink}">
     <div>${ART[b.icon] || ""}</div>
     <div class="banner-side">
@@ -471,30 +486,30 @@ function buildStatic() {
   const z = CH, b = z.book, g = b.group, isBook = z.kind === "book";
   $("#topTitle").textContent = "· " + z.name;
   const back = $("#introBack");
-  if (isBook) { back.href = "#" + (g.t === "ot" ? "old" : "new"); back.textContent = "← " + TESTAMENT[g.t]; }
-  else { back.href = "#" + b.id; back.textContent = "← " + b.name; }
+  if (isBook) { back.href = "#" + (g.t === "ot" ? "old" : "new"); back.textContent = t("backTo", t("testament", g.t)); }
+  else { back.href = "#" + b.id; back.textContent = t("backTo", b.name); }
   const hero = $("#heroArt");
   hero.className = "";
   hero.innerHTML = bannerFor(b, z);
   $("#introEyebrow").textContent = isBook
-    ? `${TESTAMENT[g.t]} · ${g.name} · ${b.ch} chapter${b.ch > 1 ? "s" : ""}${z.byVerse ? ", " + z.units + " verses" : ""}`
-    : `${z.name} · ${z.verses} verses`;
+    ? `${t("testament", g.t)} · ${g.name} · ${t("chapters", b.ch)}${z.byVerse ? ", " + t("verses", z.units) : ""}`
+    : t("chapterVerses", z.name, z.verses);
   $("#introTitle").textContent = isBook ? b.name : z.title;
   $("#introSub").textContent = isBook ? z.title : "";
   $("#introSub").hidden = !isBook;
   $("#introLede").textContent = z.overview;
-  $("#keyRef").textContent = "Key verse · " + z.keyVerse.ref;
+  $("#keyRef").textContent = t("keyVerse", z.keyVerse.ref);
   $("#keyText").textContent = z.keyVerse.text;
   $("#openPrayer").textContent = z.openPrayer;
-  $("#glanceLabel").textContent = isBook ? "The book at a glance" : "The chapter at a glance";
-  $("#castLabel").textContent = isBook ? "People & places in this book" : "People & places in this chapter";
-  $("#resEyebrow").textContent = (isBook ? b.name + " · whole book" : z.name) + " · complete";
+  $("#glanceLabel").textContent = isBook ? t("atAGlanceBook") : t("atAGlanceChapter");
+  $("#castLabel").textContent = isBook ? t("castLabelBook") : t("castLabelChapter");
+  $("#resEyebrow").textContent = isBook ? t("wholeBookComplete", b.name) : t("chapterComplete", z.name);
 
   $("#glance").innerHTML = z.sections.map((s) =>
     `<div class="glance-item"><span class="mono">${esc(s.label)}</span><h3>${esc(s.name)}</h3><p>${esc(s.summary)}</p></div>`).join("");
   $("#cast").innerHTML = (z.cast || []).map((p) =>
     `<div class="cast-item"><div class="cast-head"><b>${esc(p.name)}</b><span class="badge">${esc(p.kind)}</span>${p.ref ? `<span class="ref">${esc(p.ref)}</span>` : ""}</div>
-      <p>${esc(p.who)}</p>${p.read ? linkTo(p.read, "Read: " + p.read) : ""}</div>`).join("");
+      <p>${esc(p.who)}</p>${p.read ? linkTo(p.read, t("readLink", p.read)) : ""}</div>`).join("");
   $("#roundChips").innerHTML = z.rounds.map((r, k) => {
     const c = Q.filter((q) => q.round === k + 1).length;
     return `<div class="round-chip"><span class="num">${r.numeral}</span><b>${esc(r.name)}</b><small>${esc(r.tag)} · ${c}</small></div>`;
@@ -506,24 +521,23 @@ function buildStatic() {
   if (!chw.hidden) {
     const list = b.chapterList, done = list.filter((c) => bestK(c.key) != null).length;
     const nextUp = list.find((c) => progK(c.key, c.nq)) || list.find((c) => bestK(c.key) == null);
-    $("#chEyebrow").textContent = `${b.name}, chapter by chapter`;
-    $("#chHead").textContent = list.length === b.ch ? `${b.ch} more quizzes, one for every chapter` : `${list.length} of ${b.ch} chapter quizzes ready`;
-    $("#chText").textContent = done
-      ? `${done} of ${b.ch} chapters done. Read a chapter, then take its quiz. Pick up anywhere.`
-      : "Want to go slower? Read one chapter in your Bible, then take its quiz. Pick any chapter.";
+    $("#chEyebrow").textContent = t("chapterByChapter", b.name);
+    $("#chHead").textContent = list.length === b.ch ? t("chAllReady", b.ch) : t("chSomeReady", list.length, b.ch);
+    $("#chText").textContent = done ? t("chTextDone", done, b.ch) : t("chTextStart");
     const cells = [];
     for (let n = 1; n <= b.ch; n++) {
       const c = b.chapterMap[n];
-      if (!c) { cells.push(`<span class="soon" title="Coming soon">${n}</span>`); continue; }
+      if (!c) { cells.push(`<span class="soon" title="${esc(t("chComingSoon"))}">${n}</span>`); continue; }
       const d = bestK(c.key) != null;
-      cells.push(`<a href="#${c.route}" class="${d ? "done" : c === nextUp ? "next" : ""}" title="${esc(c.name + ": " + c.title)}" aria-label="${esc(c.name + (d ? ", done" : ""))}">${n}</a>`);
+      cells.push(`<a href="#${c.route}" class="${d ? "done" : c === nextUp ? "next" : ""}" title="${esc(c.name + ": " + c.title)}" aria-label="${esc(c.name + (d ? t("ariaDone") : ""))}">${n}</a>`);
     }
     $("#jump").innerHTML = cells.join("");
     const cn = $("#chNext");
     cn.hidden = !nextUp;
     if (nextUp) {
       cn.href = "#" + nextUp.route;
-      cn.textContent = (progK(nextUp.key, nextUp.nq) ? "Resume " : done ? "Continue with " : "Start with ") + nextUp.name + ": " + nextUp.title + " →";
+      const label = nextUp.name + ": " + nextUp.title;
+      cn.textContent = progK(nextUp.key, nextUp.nq) ? t("chResume", label) : done ? t("chContinue", label) : t("chStart", label);
     }
   }
 
@@ -559,49 +573,49 @@ function buildStatic() {
     store.set(key, "reflectionAt", Date.now());
     $("#reflectSaved").hidden = true;
     clearTimeout(rt);
-    rt = setTimeout(() => { $("#reflectSaved").hidden = !ok || !ta.value; if (!ok) toast("Couldn't save on this device", true); }, 600);
+    rt = setTimeout(() => { $("#reflectSaved").hidden = !ok || !ta.value; if (!ok) toast(t("couldntSave"), true); }, 600);
   };
   $("#closePrayer").textContent = z.closePrayer;
 
   const { prev, next } = neighbors(z);
   const nav = [];
   if (prev) nav.push(`<a class="btn ghost sm" href="#${prev.route}">← ${esc(prev.name)}</a>`);
-  if (!isBook) nav.push(`<a class="btn ghost sm" href="#${b.id}">All of ${esc(b.name)}</a>`);
+  if (!isBook) nav.push(`<a class="btn ghost sm" href="#${b.id}">${esc(t("allOf", b.name))}</a>`);
   if (next) nav.push(`<a class="btn ghost sm" href="#${next.route}">${esc(next.name)} →</a>`);
   $("#introNav").innerHTML = nav.join("");
   const rnav = [];
   if (prev) rnav.push(`<a class="btn ghost" href="#${prev.route}">← ${esc(prev.name)}</a>`);
-  rnav.push(isBook ? `<a class="btn ghost" href="#${g.t === "ot" ? "old" : "new"}">Library</a>` : `<a class="btn ghost" href="#${b.id}">All of ${esc(b.name)}</a>`);
+  rnav.push(isBook ? `<a class="btn ghost" href="#${g.t === "ot" ? "old" : "new"}">${esc(t("library"))}</a>` : `<a class="btn ghost" href="#${b.id}">${esc(t("allOf", b.name))}</a>`);
   $("#navRow").innerHTML = rnav.join("");
   const bt = $("#backTop");
   bt.href = isBook ? "#" + (g.t === "ot" ? "old" : "new") : "#" + b.id;
-  bt.textContent = isBook ? "Back to the library" : "Back to " + b.name;
+  bt.textContent = isBook ? t("backToLibrary") : t("backToBook", b.name);
 
   const nu = $("#nextUp");
   if (isBook) {
     nu.href = next ? "#" + next.route : "#library";
-    $("#nextLabel").textContent = next ? "Up next · book " + next.book.n + " of 66" : "The end of the Bible";
-    $("#nextTitle").textContent = next ? `${next.name}: ${next.title}` : "You made it to Revelation";
-    $("#nextText").textContent = next ? next.book.tag + ". " + next.overview.split(". ")[0].replace(/\.?$/, ".") : "That's the whole story, from Genesis to Revelation. Pick any book on the shelf to go again, or take it chapter by chapter.";
+    $("#nextLabel").textContent = next ? t("upNextBook", next.book.n) : t("endOfBible");
+    $("#nextTitle").textContent = next ? `${next.name}: ${next.title}` : t("madeItToRevelation");
+    $("#nextText").textContent = next ? next.book.tag + ". " + next.overview.split(". ")[0].replace(/\.?$/, ".") : t("endOfBibleText");
   } else {
     const after = next || nextChapterAfter(b, z.chapter);
     if (after) {
       nu.href = "#" + after.route;
-      $("#nextLabel").textContent = next ? "Up next" : `You finished ${b.name} · next book`;
+      $("#nextLabel").textContent = next ? t("upNext") : t("finishedBookNext", b.name);
       $("#nextTitle").textContent = `${after.name}: ${after.title}`;
       $("#nextText").textContent = next
-        ? (z.next && z.next.text && !/^You/.test(z.next.title || "") ? z.next.text : `Keep reading ${b.name}, one chapter at a time.`)
-        : `On to ${after.book.name}: ${after.book.tag.toLowerCase()}.`;
+        ? (z.next && z.next.text && !/^You/.test(z.next.title || "") ? z.next.text : t("keepReading", b.name))
+        : t("onToBook", after.book.name, after.book.tag.toLowerCase());
     } else {
       nu.href = "#" + b.id;
-      $("#nextLabel").textContent = "The end of " + b.name;
-      $("#nextTitle").textContent = "You finished " + b.name;
-      $("#nextText").textContent = "Go back to any chapter, or take the whole-book quiz and see what stuck.";
+      $("#nextLabel").textContent = t("endOfBook", b.name);
+      $("#nextTitle").textContent = t("finishedBook", b.name);
+      $("#nextText").textContent = t("finishedBookText");
     }
   }
 
-  $("#startBtn").textContent = bestOf(z) != null ? "↻ Retake the quiz" : "Start round I";
-  $("#startHint").textContent = `${N} questions, about ${Math.max(4, Math.round(N * 0.65))} minutes. Keep your Bible open. Tap an answer, then read why. Keys 1–4 work too.`;
+  $("#startBtn").textContent = bestOf(z) != null ? t("retakeTheQuiz") : t("startRound1");
+  $("#startHint").textContent = t("startHint", N, Math.max(4, Math.round(N * 0.65)));
   renderSaved();
 }
 
@@ -616,16 +630,16 @@ function renderSaved() {
   if (p) {
     box.className = "saved resume";
     box.innerHTML = `${miniRing(p.picks.length / N, p.picks.length + "/" + N)}
-      <div class="saved-copy"><span class="mono">Saved · in progress</span><b>You stopped at question ${p.picks.length + 1} of ${N}</b>
-      <span>${p.score} right so far${best != null ? " · best " + best + "/" + N : ""}</span></div>
-      <div class="saved-actions"><button class="btn sm" type="button" data-act="resume">Resume the quiz</button><button class="btn ghost sm" type="button" data-act="retake">Start over</button></div>`;
+      <div class="saved-copy"><span class="mono">${esc(t("savedInProgress"))}</span><b>${esc(t("stoppedAt", p.picks.length + 1, N))}</b>
+      <span>${esc(t("rightSoFar", p.score, best != null ? t("bestSuffix", best, N) : ""))}</span></div>
+      <div class="saved-actions"><button class="btn sm" type="button" data-act="resume">${esc(t("resumeTheQuiz"))}</button><button class="btn ghost sm" type="button" data-act="retake">${esc(t("startOver"))}</button></div>`;
   } else if (best != null) {
     box.className = "saved";
-    const lastLine = last ? `Last time: ${last.s} of ${last.n} on ${fmtDate(last.d)}` : "Saved from an earlier visit";
+    const lastLine = last ? t("lastTime", last.s, last.n, fmtDate(last.d)) : t("savedFromEarlier");
     box.innerHTML = `${miniRing(best / N, best + "/" + N)}
-      <div class="saved-copy"><span class="mono">✓ Your saved result</span><b>Best score: ${best} of ${N}</b>
-      <span>${lastLine}${tries > 1 ? " · " + tries + " attempts" : ""}</span></div>
-      <div class="saved-actions">${last ? `<button class="btn sm" type="button" data-act="results">See my results</button>` : ""}<button class="btn ${last ? "ghost " : ""}sm" type="button" data-act="retake">↻ Retake the quiz</button></div>`;
+      <div class="saved-copy"><span class="mono">${esc(t("yourSavedResult"))}</span><b>${esc(t("bestScore", best, N))}</b>
+      <span>${esc(lastLine)}${tries > 1 ? esc(t("attemptsSuffix", tries)) : ""}</span></div>
+      <div class="saved-actions">${last ? `<button class="btn sm" type="button" data-act="results">${esc(t("seeMyResults"))}</button>` : ""}<button class="btn ${last ? "ghost " : ""}sm" type="button" data-act="retake">${esc(t("retakeTheQuiz"))}</button></div>`;
   } else { box.hidden = true; box.innerHTML = ""; return; }
   box.hidden = false;
   box.querySelectorAll("[data-act]").forEach((el) => el.addEventListener("click", () => {
@@ -642,7 +656,7 @@ function buildWords() {
     const b = document.createElement("button");
     b.type = "button"; b.className = "word"; b.setAttribute("aria-expanded", "false");
     b.innerHTML = `<span class="wtop"><span class="term">${esc(w.term)}</span><span class="ref">${esc(w.ref)}</span></span>
-      <span class="tap">Tap to reveal</span><span class="meaning" hidden>${esc(w.meaning)}</span>`;
+      <span class="tap">${esc(t("tapToReveal"))}</span><span class="meaning" hidden>${esc(w.meaning)}</span>`;
     b.addEventListener("click", () => {
       const m = b.querySelector(".meaning"), open = m.hidden;
       m.hidden = !open; b.querySelector(".tap").hidden = open;
@@ -652,8 +666,8 @@ function buildWords() {
     box.appendChild(b);
   });
   function countWords() {
-    $("#wordsCount").textContent = opened + " of " + CH.words.length + " revealed";
-    $("#wordsAll").textContent = opened === CH.words.length ? "Hide all meanings" : "Show all meanings";
+    $("#wordsCount").textContent = t("revealedCount", opened, CH.words.length);
+    $("#wordsAll").textContent = opened === CH.words.length ? t("hideAllMeanings") : t("showAllMeanings");
   }
   $("#wordsAll").onclick = () => {
     const showAll = opened !== CH.words.length;
@@ -676,15 +690,15 @@ function buildUnderline() {
     c.innerHTML = `${refLink(u.ref)}
       <p class="headline"><span>${esc(u.line)}</span></p>
       <div class="apply">
-        <div><span class="mono">What it means</span><p>${esc(u.mean)}</p></div>
-        <div><span class="mono">Live it out</span><p>${esc(u.live)}</p></div>
+        <div><span class="mono">${esc(t("whatItMeans"))}</span><p>${esc(u.mean)}</p></div>
+        <div><span class="mono">${esc(t("liveItOut"))}</span><p>${esc(u.live)}</p></div>
       </div>
       <button class="ul-toggle" type="button"></button>`;
     const btn = c.querySelector(".ul-toggle");
     const paint = () => {
       const on = marked.has(k);
       c.classList.toggle("done", on);
-      btn.textContent = on ? "✓ Underlined · saved" : "Mark as underlined";
+      btn.textContent = on ? t("underlinedSaved") : t("markAsUnderlined");
       btn.setAttribute("aria-pressed", String(on));
     };
     btn.addEventListener("click", () => {
@@ -692,13 +706,13 @@ function buildUnderline() {
       on ? marked.add(k) : marked.delete(k);
       const ok = store.set(key, "underlined", [...marked].sort((a, b) => a - b));
       paint(); countUl();
-      if (!ok) toast("Couldn't save on this device", true);
-      else toast(on ? "Underline saved to My Bible" : "Underline removed");
+      if (!ok) toast(t("couldntSave"), true);
+      else toast(on ? t("underlineSaved") : t("underlineRemoved"));
     });
     paint();
     list.appendChild(c);
   });
-  function countUl() { $("#ulCount").textContent = marked.size + " of " + CH.underline.length + " underlined"; }
+  function countUl() { $("#ulCount").textContent = t("underlinedCount", marked.size, CH.underline.length); }
   countUl();
 }
 
@@ -712,7 +726,7 @@ function lightRibbon(vs) {
 }
 function updateTop() {
   const answered = state.picks.filter((p) => p != null).length;
-  $("#topMeta").textContent = answered === 0 ? N + " questions" : `Q ${Math.min(state.i + 1, N)}/${N} · ${state.score} right`;
+  $("#topMeta").textContent = answered === 0 ? t("roundCountShort", N) : `Q ${Math.min(state.i + 1, N)}/${N} · ${t("rightCount", state.score)}`;
 }
 function start() {
   state = { i: 0, score: 0, picks: [] };
@@ -738,20 +752,20 @@ function renderRound(r) {
   $("#roundNum").textContent = R.numeral;
   $("#roundName").textContent = R.name;
   $("#roundDesc").textContent = R.desc;
-  $("#roundCount").textContent = R.tag + " · " + Q.filter((q) => q.round === r).length + " questions";
+  $("#roundCount").textContent = t("roundCount", R.tag, Q.filter((q) => q.round === r).length);
   lightRibbon([]); updateTop(); show("round");
   $("#roundGo").focus({ preventScroll: true });
 }
 function renderQuestion() {
   const q = Q[state.i], R = CH.rounds[q.round - 1];
   $("#qArt").innerHTML = ART[q.art] || ART[CH.book.icon] || ART[R.art] || "";
-  $("#qRound").textContent = "Round " + R.numeral + " · " + R.name;
-  $("#qCount").textContent = "Question " + (state.i + 1) + " of " + N;
-  $("#qType").textContent = TYPE_LABEL[q.type] || "Question";
+  $("#qRound").textContent = t("qRound", R.numeral, R.name);
+  $("#qCount").textContent = t("qCount", state.i + 1, N);
+  $("#qType").textContent = t("typeLabel", q.type);
   $("#qText").innerHTML = esc(q.q).replace("____", '<span class="blank">?</span>');
   const look = $("#look");
   if (q.look && q.look.length) {
-    look.innerHTML = `<span class="mono">Look it up first</span>` + q.look.map((r) => linkTo(r)).join("");
+    look.innerHTML = `<span class="mono">${esc(t("lookItUpFirst"))}</span>` + q.look.map((r) => linkTo(r)).join("");
     look.hidden = false;
   } else look.hidden = true;
   const order = q.type === "tf" ? q.options.map((_, k) => k) : shuffle(q.options.map((_, k) => k));
@@ -766,16 +780,19 @@ function renderQuestion() {
   });
   $("#fb").hidden = true; $("#nextBtn").hidden = true;
   lightRibbon(q.verses); updateTop(); show("quiz");
+  /* A language toggle re-renders whichever screen is up, including a quiz
+     question already answered — repaint that answered state instead of
+     presenting it as fresh and unanswered again. */
+  if (state.picks[state.i] != null) showAnswered(state.picks[state.i]);
 }
-const GOOD = ["Correct.", "That's it.", "Locked in.", "Right on.", "Yes."];
 let saveInfo = null;
-function pick(oi) {
+/* Pure repaint of an already-picked answer: correct/wrong highlighting,
+   the feedback card, and the next-step button. No side effects (score,
+   saved progress, scrolling) — those belong to pick(), the only place a
+   question is actually answered for the first time. */
+function showAnswered(oi) {
   const q = Q[state.i];
-  if (state.picks[state.i] != null) return;
-  state.picks[state.i] = oi;
   const ok = oi === q.answer;
-  if (ok) state.score++;
-  q.verses.forEach((v) => seen.add(v));
   document.querySelectorAll("#opts .opt").forEach((b) => {
     b.disabled = true;
     const bi = +b.dataset.oi;
@@ -786,19 +803,31 @@ function pick(oi) {
   if (q.type === "fill") $("#qText").innerHTML = esc(q.q).replace("____", `<span class="blank">${esc(q.options[q.answer])}</span>`);
   const fb = $("#fb");
   fb.className = "fb " + (ok ? "good" : "bad");
-  $("#fbTitle").textContent = ok ? GOOD[state.i % GOOD.length] : "Not quite. The answer is: " + q.options[q.answer];
+  const GOOD = t("goodAnswers");
+  $("#fbTitle").textContent = ok ? GOOD[state.i % GOOD.length] : t("notQuite", q.options[q.answer]);
   $("#fbWhy").textContent = q.why;
   const fr = $("#fbRef");
   fr.textContent = q.ref + " ↗"; fr.href = bgUrl(q.ref);
   fb.hidden = false;
   const last = state.i === N - 1;
-  if (last) saveResult();
-  else store.set(KEY, "progress", { picks: state.picks.slice(0, state.i + 1), score: state.score, d: Date.now(), n: N });
   const nextRound = !last && Q[state.i + 1].round !== q.round;
   const nb = $("#nextBtn");
-  nb.textContent = last ? "See my results" : nextRound ? "On to round " + CH.rounds[Q[state.i + 1].round - 1].numeral : "Next question";
+  nb.textContent = last ? t("seeMyResults") : nextRound ? t("onToRound", CH.rounds[Q[state.i + 1].round - 1].numeral) : t("nextQuestion");
   nb.hidden = false;
+}
+function pick(oi) {
+  const q = Q[state.i];
+  if (state.picks[state.i] != null) return;
+  state.picks[state.i] = oi;
+  const ok = oi === q.answer;
+  if (ok) state.score++;
+  q.verses.forEach((v) => seen.add(v));
+  showAnswered(oi);
+  const last = state.i === N - 1;
+  if (last) saveResult();
+  else store.set(KEY, "progress", { picks: state.picks.slice(0, state.i + 1), score: state.score, d: Date.now(), n: N });
   updateTop();
+  const fb = $("#fb"), nb = $("#nextBtn");
   requestAnimationFrame(() => {
     fb.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
     nb.focus({ preventScroll: true });
@@ -825,7 +854,7 @@ function finish() {
   const info = saveInfo || { prevBest: bestOf(CH), ok: true };
   renderResults({ fresh: true, prevBest: info.prevBest });
   setHash(CH.route + "/results");
-  if (info.ok) toast("Result saved to My Bible"); else toast("Couldn't save on this device", true);
+  if (info.ok) toast(t("resultSaved")); else toast(t("couldntSave"), true);
 }
 function showSavedResults() {
   const last = lastK(CH.key);
@@ -837,10 +866,7 @@ function showSavedResults() {
 }
 function scoreMsg(pct, z) {
   const where = z.kind === "book" ? z.book.name : z.name;
-  return pct >= 0.94 ? ["Locked in.", `You know ${where} well. Now pick one verse from it and live it out tomorrow.`] :
-         pct >= 0.7  ? ["Strong work.", "You've got the main ideas. Look over what you missed below, then reread those parts."] :
-         pct >= 0.45 ? ["Good start.", "Reread the parts you missed, then retake the quiz. Your best score is kept."] :
-                       ["Keep going.", `Read ${where} slowly one more time and retake the quiz. That's how it sinks in.`];
+  return t("scoreMsg", pct, where);
 }
 function renderResults(opts) {
   const s = state.score, C = 2 * Math.PI * 54, pct = s / N;
@@ -848,29 +874,30 @@ function renderResults(opts) {
   ring.style.strokeDasharray = C.toFixed(2);
   ring.style.strokeDashoffset = C.toFixed(2);
   $("#scoreNum").textContent = s;
-  $("#scoreOf").textContent = "of " + N;
+  $("#scoreOf").textContent = t("scoreOf", N);
   const [title, msg] = scoreMsg(pct, CH);
   $("#scoreTitle").textContent = title;
   $("#scoreMsg").textContent = msg;
   const best = bestOf(CH) != null ? bestOf(CH) : s, last = lastK(CH.key);
   $("#bestLine").textContent = opts.fresh
-    ? (opts.prevBest == null ? "First attempt · saved" : s > opts.prevBest ? "New best · was " + opts.prevBest + "/" + N : "Best so far · " + best + "/" + N)
-    : "Saved result" + (last ? " · " + fmtDate(last.d) : "") + " · best " + best + "/" + N;
+    ? (opts.prevBest == null ? t("firstAttemptSaved") : s > opts.prevBest ? t("newBest", opts.prevBest, N) : t("bestSoFar", best, N))
+    : t("savedResult", last ? " · " + fmtDate(last.d) : "", best, N);
 
   const h = histK(CH.key).slice(-8);
   $("#historyBox").hidden = !h.length;
   $("#hbars").innerHTML = h.map((a, k) =>
-    `<div class="hbar${k === h.length - 1 ? " now" : ""}" style="--p:${(a.s / a.n).toFixed(3)}" title="${a.s} of ${a.n} · ${esc(fmtDate(a.d))}"><b>${a.s}</b><i></i><small>${esc(fmtDate(a.d))}</small></div>`).join("");
+    `<div class="hbar${k === h.length - 1 ? " now" : ""}" style="--p:${(a.s / a.n).toFixed(3)}" title="${esc(t("scoreOfShort", a.s, a.n))} · ${esc(fmtDate(a.d))}"><b>${a.s}</b><i></i><small>${esc(fmtDate(a.d))}</small></div>`).join("");
 
   const missed = Q.map((q, k) => ({ q, k })).filter(({ q, k }) => state.picks[k] !== q.answer);
   $("#missed").innerHTML = missed.length
     ? missed.map(({ q }) => `<li><span class="q">${esc(q.q.replace("____", "___"))}</span><span class="a">${esc(q.options[q.answer])}</span>${refLink(q.ref)}</li>`).join("")
-    : `<li><span class="a">You didn't miss a single one.</span><span class="q">Pick one verse below and underline it in your Bible.</span></li>`;
+    : `<li><span class="a">${esc(t("didntMissOne"))}</span><span class="q">${esc(t("pickVerseBelow"))}</span></li>`;
 
   buildWords();
+  buildUnderline();
   for (let v = 1; v <= CH.units; v++) seen.add(v);
   lightRibbon([]);
-  $("#topMeta").textContent = "Done · " + s + "/" + N;
+  $("#topMeta").textContent = t("doneScore", s, N);
   show("results");
   requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = (C * (1 - pct)).toFixed(2); }));
   if (opts.fresh && pct >= 0.8) confetti();
@@ -897,14 +924,14 @@ let MYTAB = "results", paneToken = 0;
 function renderMyBible(tab) {
   CH = null; KEY = "";
   if (["results", "underlined", "journal"].includes(tab)) MYTAB = tab;
-  document.title = "My Bible · Bible Quizzy";
-  $("#topTitle").textContent = "· My Bible";
+  document.title = t("myBibleTitle");
+  $("#topTitle").textContent = "· " + t("myBible");
   $("#myStats").innerHTML = statTiles(allStats());
   renderPane();
   show("mybible");
 }
-const emptyBox = (title, text) =>
-  `<div class="empty"><b style="color:var(--fg); font-family:var(--f-display); font-size:1.15rem">${title}</b><p>${text}</p><a class="btn sm" href="#library">Open the library</a></div>`;
+const emptyBox = ([title, text]) =>
+  `<div class="empty"><b style="color:var(--fg); font-family:var(--f-display); font-size:1.15rem">${esc(title)}</b><p>${esc(text)}</p><a class="btn sm" href="#library">${esc(t("openTheLibrary"))}</a></div>`;
 async function renderPane() {
   const token = ++paneToken;
   const keys = savedQuizKeys().sort((a, b) => quizOrder(quizMeta(a)) - quizOrder(quizMeta(b)));
@@ -912,10 +939,14 @@ async function renderPane() {
   const ulKeys = keys.filter((k) => marksK(k).length);
   const jnKeys = keys.filter((k) => { const t = store.get(k, "reflection", ""); return typeof t === "string" && t.trim(); });
   const counts = { results: results.length, underlined: ulKeys.reduce((n, k) => n + marksK(k).length, 0), journal: jnKeys.length };
+  const TAB_LABEL = { results: "results", underlined: "underlined", journal: "journal" };
   document.querySelectorAll("#myTabs button").forEach((b) => {
     const on = b.dataset.tab === MYTAB;
     b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on));
-    b.innerHTML = b.textContent.replace(/\d+$/, "").trim() + `<small>${counts[b.dataset.tab]}</small>`;
+    b.querySelector(".lbl").textContent = t(TAB_LABEL[b.dataset.tab]);
+    let small = b.querySelector("small");
+    if (!small) { small = document.createElement("small"); b.appendChild(small); }
+    small.textContent = counts[b.dataset.tab];
   });
   const pane = $("#myPane");
   if (MYTAB === "results") {
@@ -923,29 +954,27 @@ async function renderPane() {
       .sort((a, b) => b.at - a.at);
     pane.innerHTML = rows.length ? rows.map(({ m, h, p, at }) => {
       const best = bestK(m.key), last = lastK(m.key), n = (last && last.n) || m.nq;
-      const sub = [m.kind === "book" ? "Whole book" : m.title,
-        p ? "in progress · Q" + (p.picks.length + 1) + " of " + m.nq : null,
-        h.length ? h.length + (h.length > 1 ? " attempts" : " attempt") : null,
+      const sub = [m.kind === "book" ? t("wholeBookLabel") : m.title,
+        p ? t("inProgressAt", p.picks.length + 1, m.nq) : null,
+        h.length ? t("attempts", h.length) : null,
         at ? fmtDate(at) : null].filter(Boolean).join(" · ");
-      const acts = [p ? `<a class="linkbtn" href="#${m.route}/resume">▸ Resume</a>` : "",
-        last ? `<a class="linkbtn" href="#${m.route}/results">See results</a>` : "",
-        `<a class="linkbtn" href="#${m.route}/retake">↻ Retake</a>`].join("");
+      const acts = [p ? `<a class="linkbtn" href="#${m.route}/resume">${esc(t("resumeLink"))}</a>` : "",
+        last ? `<a class="linkbtn" href="#${m.route}/results">${esc(t("seeResults"))}</a>` : "",
+        `<a class="linkbtn" href="#${m.route}/retake">${esc(t("retakeLink"))}</a>`].join("");
       return `<article class="rec" style="--c:${m.book.group.color}">
         <div class="rec-main"><a class="rec-title" href="#${m.route}">${esc(m.name)}</a><span class="mono">${esc(sub)}</span></div>
-        <div class="rec-score">${best != null ? `<b>${best}<span style="font-size:.85rem;color:var(--muted)">/${n}</span></b><small>Best</small>` : `<small>Not finished</small>`}</div>
+        <div class="rec-score">${best != null ? `<b>${best}<span style="font-size:.85rem;color:var(--muted)">/${n}</span></b><small>${esc(t("bestLabel"))}</small>` : `<small>${esc(t("notFinished"))}</small>`}</div>
         <div class="rec-actions">${acts}</div>
       </article>`;
-    }).join("") : emptyBox("No results yet", "Finish any quiz and your score is saved here, with every attempt.");
+    }).join("") : emptyBox(t("noResultsYet"));
     return;
   }
   const wanted = MYTAB === "underlined" ? ulKeys : jnKeys;
   if (!wanted.length) {
-    pane.innerHTML = MYTAB === "underlined"
-      ? emptyBox("Nothing underlined yet", "After a quiz, tap “Mark as underlined” on the verses you mark in your Bible. They all collect here.")
-      : emptyBox("No notes yet", "Every quiz ends with a question to sit with. What you write there is saved here.");
+    pane.innerHTML = MYTAB === "underlined" ? emptyBox(t("noUnderlinesYet")) : emptyBox(t("noNotesYet"));
     return;
   }
-  if (wanted.some((k) => !QUIZ[k])) pane.innerHTML = `<p class="center">Loading your saved ${MYTAB === "underlined" ? "underlines" : "notes"}…</p>`;
+  if (wanted.some((k) => !QUIZ[k])) pane.innerHTML = `<p class="center">${esc(t("loadingSaved", MYTAB === "underlined" ? t("underlinedWord") : t("notesWord")))}</p>`;
   const loaded = await Promise.all(wanted.map((k) => loadByKey(k).catch(() => null)));
   if (token !== paneToken) return;
   if (MYTAB === "underlined") {
@@ -960,12 +989,12 @@ async function renderPane() {
     pane.innerHTML = groups.map(({ b, items }) => `<div class="ul-group" style="--c:${b.group.color}">
       <h3>${esc(b.name)} <span class="mono">${items.length}</span></h3>
       ${items.map(({ z, k, u }) => `<div class="ul-item">
-        <div class="row">${refLink(u.ref)}<span class="mono">From the ${esc(z.name)} quiz</span></div>
+        <div class="row">${refLink(u.ref)}<span class="mono">${esc(t("fromTheQuiz", z.name))}</span></div>
         <p class="headline"><span>${esc(u.line)}</span></p>
         <p>${esc(u.mean)}</p>
-        <p><b style="color:var(--fg); font-weight:600">Live it out:</b> ${esc(u.live)}</p>
-        <button class="linkbtn" type="button" data-unmark="${z.key}" data-k="${k}" style="align-self:flex-start">Remove underline</button>
-      </div>`).join("")}</div>`).join("") || emptyBox("Nothing underlined yet", "After a quiz, tap “Mark as underlined” on the verses you mark in your Bible.");
+        <p><b style="color:var(--fg); font-weight:600">${esc(t("liveItOutLabel"))}</b> ${esc(u.live)}</p>
+        <button class="linkbtn" type="button" data-unmark="${z.key}" data-k="${k}" style="align-self:flex-start">${esc(t("removeUnderline"))}</button>
+      </div>`).join("")}</div>`).join("") || emptyBox(t("noUnderlinesYet"));
   } else {
     const items = loaded.filter(Boolean).map((z) => ({ z, text: store.get(z.key, "reflection", ""), at: store.get(z.key, "reflectionAt", 0) }))
       .sort((a, b) => b.at - a.at);
@@ -987,7 +1016,7 @@ function exportBackup() {
   a.download = "bible-quizzy-backup-" + new Date().toISOString().slice(0, 10) + ".json";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-  toast("Backup downloaded");
+  toast(t("backupDownloaded"));
 }
 function importBackup(file) {
   const r = new FileReader();
@@ -997,14 +1026,81 @@ function importBackup(file) {
       if (!o || o.app !== "bible-quizzy" || !o.data || typeof o.data !== "object") throw new Error("not a backup");
       let n = 0;
       Object.keys(o.data).forEach((k) => { if (OUR_KEY.test(k) && typeof o.data[k] === "string") { localStorage.setItem(k, o.data[k]); n++; } });
-      toast("Backup restored · " + n + " saved items");
+      toast(t("backupRestored", n));
       renderMyBible();
-    } catch (e) { toast("That file isn't a Bible Quizzy backup", true); }
+    } catch (e) { toast(t("notABackup"), true); }
   };
   r.readAsText(file);
 }
 
+/* ---------------- static UI text (language chrome that no render function
+   already refreshes on its own — see setLang()'s caller below) ---------------- */
+function applyStaticUI() {
+  document.documentElement.lang = LANG;
+  $("#myLinkText").textContent = t("myBible");
+  const lt = $("#langToggle");
+  lt.textContent = t("langToggleTo");
+  lt.title = t("langToggleLabel");
+  lt.setAttribute("aria-label", t("langToggleLabel"));
+  $("#homeTagline").textContent = t("homeStats");
+  $("#homeLedeText").textContent = t("homeLede");
+  $("#testTabs button[data-t='ot'] .lbl").textContent = t("oldTestament");
+  $("#testTabs button[data-t='nt'] .lbl").textContent = t("newTestament");
+  $("#search").placeholder = t("searchPlaceholder");
+  $("#search").setAttribute("aria-label", t("searchAriaLabel"));
+  $('#viewSeg button[data-v="shelf"]').textContent = t("viewShelf");
+  $('#viewSeg button[data-v="list"]').textContent = t("viewList");
+  $("#noMatch").textContent = t("noMatch");
+  $("#mybibleBack").textContent = t("backTo", t("library"));
+  $("#mybibleTagline").textContent = t("savedOnDevice");
+  $("#mybibleTitle").innerHTML = t("myBibleHeroTitle");
+  $("#mybibleLedeText").textContent = t("myBibleLede");
+  $("#backupLabel").textContent = t("keepItSafe");
+  $("#backupText").textContent = t("backupText");
+  $("#exportBtn").textContent = t("downloadBackup");
+  $("#importBtn").textContent = t("restoreBackup");
+  $("#threeRoundsLabel").textContent = t("threeRounds");
+  $("#roundGo").textContent = t("begin");
+  $("#retakeTop").textContent = t("retakeTheQuiz");
+  $("#retake").textContent = t("retakeTheQuiz");
+  $("#yourAttemptsLabel").textContent = t("yourAttempts");
+  $("#savedTag").textContent = t("savedToMyBible");
+  $("#reviewMissedLabel").textContent = t("reviewWhatYouMissed");
+  $("#hardWordsHeading").textContent = t("hardWordsHeading");
+  $("#hardWordsSub").textContent = t("hardWordsSub");
+  $("#underlineHeading").textContent = t("underlineThisHeading");
+  $("#underlineSub").textContent = t("underlineThisSub");
+  $("#seeAllUnderlinesLink").textContent = t("seeAllUnderlines");
+  $("#sitWithThisLabel").textContent = t("sitWithThis");
+  $("#reflect").placeholder = t("reflectPlaceholder");
+  $("#reflectSaved").textContent = t("reflectSaved");
+  $("#closeInPrayerLabel").textContent = t("closeInPrayer");
+}
+
+/* Re-render whatever screen is currently showing, in place — a plain
+   route() would re-derive the screen from location.hash and always land
+   back on the quiz's intro screen, silently discarding an in-progress
+   round or question. */
+function refreshCurrentScreen() {
+  const cur = document.querySelector(".screen:not([hidden])");
+  const id = cur && cur.id;
+  if (id === "home") return renderHome();
+  if (id === "mybible") return renderMyBible();
+  if (!CH) return route();
+  if (id === "intro") return buildStatic();
+  if (id === "round") return renderRound(Q[state.i].round);
+  if (id === "quiz") return renderQuestion();
+  if (id === "results") return renderResults({ fresh: false });
+  return route();
+}
+
 /* ---------------- events ---------------- */
+$("#langToggle").addEventListener("click", () => {
+  setLang(LANG === "es" ? "en" : "es");
+  refreshLanguageDependentData();
+  applyStaticUI();
+  refreshCurrentScreen();
+});
 $("#startBtn").addEventListener("click", start);
 $("#roundGo").addEventListener("click", renderQuestion);
 $("#nextBtn").addEventListener("click", next);
@@ -1046,7 +1142,7 @@ $("#myPane").addEventListener("click", (e) => {
   if (!b) return;
   const key = b.dataset.unmark, k = +b.dataset.k;
   store.set(key, "underlined", store.get(key, "underlined", []).filter((x) => x !== k));
-  toast("Underline removed");
+  toast(t("underlineRemoved"));
   $("#myStats").innerHTML = statTiles(allStats());
   renderPane();
 });
@@ -1087,7 +1183,7 @@ function route() {
   if (b && n >= 1 && n <= b.ch) {
     if (b.ch === 1) { setHash(b.id); return b.quiz ? loadQuiz(b.quiz, mode) : renderHome(b.t); }
     const notReady = () => {
-      toast(`The ${chapterName(b, n)} quiz isn't ready yet`, true);
+      toast(t("chapterNotReady", chapterName(b, n)), true);
       setHash(b.id);
       if (b.quiz) loadQuiz(b.quiz); else renderHome(b.t);
     };
@@ -1107,4 +1203,5 @@ function route() {
   renderHome();
 }
 window.addEventListener("hashchange", route);
+applyStaticUI();
 route();
