@@ -68,6 +68,9 @@ button{font:inherit; color:inherit}
 .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--fg); text-decoration:none; font-weight:600; font-size:.85rem; white-space:nowrap}
 .pill:hover{border-color:var(--lamp); color:var(--lamp)}
 button.pill{appearance:none; cursor:pointer; font-family:var(--f-mono); letter-spacing:.04em}
+.lang-switch{display:flex; gap:4px; padding:3px; border:1px solid var(--line); border-radius:999px; background:var(--surface)}
+.lang-switch button{appearance:none; cursor:pointer; border:0; background:none; color:var(--muted); font:inherit; font-weight:600; font-size:.8rem; padding:5px 11px; border-radius:999px; white-space:nowrap}
+.lang-switch button.on{background:var(--lamp); color:var(--on-lamp)}
 .pill .n{font-family:var(--f-mono); font-size:.68rem; color:var(--on-lamp); background:var(--lamp); border-radius:999px; padding:1px 7px; font-weight:500}
 #ribbonWrap{margin-top:10px}
 .ribbon{display:flex; gap:2px; align-items:flex-end; height:12px}
@@ -468,7 +471,10 @@ a.next-up:hover{border-color:var(--lamp)}
       </span>
       <span class="top-right">
         <span class="mono meta" id="topMeta"></span>
-        <button class="pill" id="langToggle" type="button"></button>
+        <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+          <button type="button" id="langEn" lang="en">English</button>
+          <button type="button" id="langEs" lang="es">Español</button>
+        </div>
         <a class="pill" id="myLink" href="#my-bible"><span id="myLinkText">My Bible</span> <span class="n" id="myCount" hidden></span></a>
       </span>
     </div>

@@ -16,7 +16,7 @@
    book/group name+tag+desc fields in place (BOOKS/GROUPS are shared
    objects referenced by app.js, so this takes effect everywhere without
    needing a page reload) and the caller is responsible for re-rendering
-   the current screen afterward (see the #langToggle handler in app.js).
+   the current screen afterward (see switchLang() in app.js).
    =================================================================== */
 "use strict";
 
@@ -260,8 +260,6 @@ const STR = {
     chapterNotReady: (name) => `The ${name} quiz isn't ready yet`,
     doneScore: (s, n) => `Done · ${s}/${n}`,
     myBibleHeroTitle: "My <em>Bible</em>",
-    langToggleTo: "ES",
-    langToggleLabel: "Switch to Spanish",
   },
   es: {
     appTagline: "un cuestionario para cada libro y capítulo de la Biblia",
@@ -466,8 +464,6 @@ const STR = {
     chapterNotReady: (name) => `El cuestionario de ${name} todavía no está listo`,
     doneScore: (s, n) => `Terminado · ${s}/${n}`,
     myBibleHeroTitle: "Mi <em>Biblia</em>",
-    langToggleTo: "EN",
-    langToggleLabel: "Switch to English",
   },
 };
 STR.es.underlinedWord = "subrayados"; // used for the loadingSaved("underlines"/"notes") swap below

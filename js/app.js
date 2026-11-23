@@ -1038,10 +1038,10 @@ function importBackup(file) {
 function applyStaticUI() {
   document.documentElement.lang = LANG;
   $("#myLinkText").textContent = t("myBible");
-  const lt = $("#langToggle");
-  lt.textContent = t("langToggleTo");
-  lt.title = t("langToggleLabel");
-  lt.setAttribute("aria-label", t("langToggleLabel"));
+  $("#langEn").classList.toggle("on", LANG === "en");
+  $("#langEn").setAttribute("aria-pressed", String(LANG === "en"));
+  $("#langEs").classList.toggle("on", LANG === "es");
+  $("#langEs").setAttribute("aria-pressed", String(LANG === "es"));
   $("#homeTagline").textContent = t("homeStats");
   $("#homeLedeText").textContent = t("homeLede");
   $("#testTabs button[data-t='ot'] .lbl").textContent = t("oldTestament");
@@ -1094,13 +1094,17 @@ function refreshCurrentScreen() {
   return route();
 }
 
-/* ---------------- events ---------------- */
-$("#langToggle").addEventListener("click", () => {
-  setLang(LANG === "es" ? "en" : "es");
+function switchLang(l) {
+  if (l === LANG) return;
+  setLang(l);
   refreshLanguageDependentData();
   applyStaticUI();
   refreshCurrentScreen();
-});
+}
+
+/* ---------------- events ---------------- */
+$("#langEn").addEventListener("click", () => switchLang("en"));
+$("#langEs").addEventListener("click", () => switchLang("es"));
 $("#startBtn").addEventListener("click", start);
 $("#roundGo").addEventListener("click", renderQuestion);
 $("#nextBtn").addEventListener("click", next);
