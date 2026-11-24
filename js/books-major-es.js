@@ -135,7 +135,7 @@ BQ.bookEs({
     { r: 3, ref: "Lamentations 3:22–23 · 2 Corinthians 4:16", ch: [3], look: ["2 Corinthians 4:16–18"], q: "Lamentaciones dice que las misericordias de Dios son nuevas cada mañana. ¿Cómo lo repite Pablo en 2 Corintios 4:16?", o: ["Por dentro nos vamos renovando de día en día", "Nunca deberíamos sentirnos cansados", "Cada mañana debemos ganarnos el amor de Dios", "Nuestros cuerpos nunca envejecerán"], why: "Aunque nuestro exterior se desgasta, Dios nos renueva por dentro cada día. Misericordias nuevas, cada día." }
   ],
   words: [
-    ["Lamento", "the title", "Un canto de dolor profundo. Lamentaciones son cinco de ellos."],
+    ["Lamento", "el título", "Un canto de dolor profundo. Lamentaciones son cinco de ellos."],
     ["Acróstico", "caps. 1–4", "Un poema donde cada verso comienza con la siguiente letra del alfabeto."],
     ["Compasión", "Lamentations 3:22", "Un cuidado profundo que mueve a alguien a ayudar. La de Dios nunca se acaba."],
     ["Fidelidad", "Lamentations 3:23", "Ser completamente confiable y cumplir siempre las promesas."],

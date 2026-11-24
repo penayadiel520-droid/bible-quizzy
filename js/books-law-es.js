@@ -236,7 +236,7 @@ BQ.bookEs({
     { r: 3, ref: "Deuteronomy 8:3 · Matthew 4:4", ch: [6, 8], look: ["Matthew 4:1–10"], q: "Cuando Satanás tentó a Jesús en el desierto, ¿de qué libro vinieron las tres respuestas de Jesús?", o: ["Deuteronomio", "Salmos", "Isaías", "Génesis"], why: "Jesús respondió a cada tentación con Deuteronomio (8:3; 6:16; 6:13). Se mantuvo fiel en el desierto donde Israel había fallado." }
   ],
   words: [
-    ["Deuteronomio", "the title", "Del griego “segunda ley.” Es la ley de Dios dada de nuevo a una nueva generación."],
+    ["Deuteronomio", "el título", "Del griego “segunda ley.” Es la ley de Dios dada de nuevo a una nueva generación."],
     ["Shemá", "Deuteronomy 6:4", "Del hebreo “Oye.” La primera palabra de la oración más importante de Israel."],
     ["Pacto", "Deuteronomy 29:1", "El acuerdo vinculante de Dios con Israel: Él es su Dios, ellos son su pueblo."],
     ["Desamparar", "Deuteronomy 31:6", "Dejar o abandonar. Dios promete que Él nunca lo hará."],
