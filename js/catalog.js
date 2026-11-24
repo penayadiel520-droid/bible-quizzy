@@ -97,7 +97,14 @@ window.BQ_BOOKS = [
    and register with BQ.chapter when the app loads one. */
 window.BQ_QUIZZES = [];
 window.BQ_CHAPTER_DATA = {};
+/* Spanish content registers in parallel (same id/book+ch keys) via BQ.bookEs /
+   BQ.chapterEs — see js/i18n.js and js/app.js for how LANG picks between them,
+   falling back to English wherever a Spanish translation doesn't exist yet. */
+window.BQ_QUIZZES_ES = [];
+window.BQ_CHAPTER_DATA_ES = {};
 window.BQ = {
   book: (q) => window.BQ_QUIZZES.push(q),
-  chapter: (d) => { window.BQ_CHAPTER_DATA[d.book + "-" + d.ch] = d; }
+  chapter: (d) => { window.BQ_CHAPTER_DATA[d.book + "-" + d.ch] = d; },
+  bookEs: (q) => window.BQ_QUIZZES_ES.push(q),
+  chapterEs: (d) => { window.BQ_CHAPTER_DATA_ES[d.book + "-" + d.ch] = d; }
 };

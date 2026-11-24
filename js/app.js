@@ -115,47 +115,96 @@ function normChapter(raw) {
     underline: raw.under.map(([ref, line, mean, live]) => ({ ref, line, mean, live }))
   });
 }
-(window.BQ_QUIZZES || []).forEach((d) => {
-  const b = BOOK[d.id];
-  if (!b) return;
-  b.quiz = normBook(d);
-  QUIZ[b.quiz.key] = b.quiz;
+/* Book-level quiz content: English always loaded (js/books-*.js, eagerly, like
+   before). Spanish loads the same way from the parallel js/books-*-es.js files
+   when present; BQ.bookEs() registers each translated book under window.BQ_QUIZZES_ES,
+   keyed by the same `id` as its English counterpart. A book with no Spanish
+   file yet (translation in progress) simply has nothing in RAW_BOOK_ES for its
+   id, so buildBookQuiz() below falls back to English for it. */
+const RAW_BOOK_EN = {};
+(window.BQ_QUIZZES || []).forEach((d) => { RAW_BOOK_EN[d.id] = d; });
+const RAW_BOOK_ES = {};
+(window.BQ_QUIZZES_ES || []).forEach((d) => { RAW_BOOK_ES[d.id] = d; });
+function buildBookQuiz(b) {
+  const esRaw = RAW_BOOK_ES[b.id];
+  const useEs = LANG === "es" && !!esRaw;
+  const raw = useEs ? esRaw : RAW_BOOK_EN[b.id];
+  if (!raw) return null;
+  const z = normBook(raw);
+  z._lang = useEs ? "es" : "en";
+  return z;
+}
+BOOKS.forEach((b) => {
+  const z = buildBookQuiz(b);
+  if (z) { b.quiz = z; QUIZ[z.key] = z; }
 });
 BOOKS.forEach((b) => { if (b.quiz) BOOK_QUIZZES.push(b.quiz); });
 
-/* Language switch re-derives everything that was translated when first built:
-   each book's chapter-list display names, and any already-loaded quiz's name
-   and round labels. (The book/group objects themselves are refreshed in place
-   by applyBookLanguage(), called from setLang().) */
+/* Language switch re-derives everything that was translated when first built.
+   Book quizzes are small and all loaded upfront, so they're simply rebuilt
+   from whichever raw data (English or Spanish) matches the new language.
+   Chapter quizzes are lazy-loaded on demand (see loadChapter) and may need a
+   network fetch for their Spanish version, so a stale-language entry is just
+   evicted here — the next time it's opened, loadChapter re-fetches it in the
+   new language (falling back to English if no Spanish file exists for it).
+   (The book/group objects' name/tag/desc are refreshed in place by
+   applyBookLanguage(), called from setLang() before this runs.) */
 function refreshLanguageDependentData() {
   BOOKS.forEach((b) => { b.chapterList.forEach((c) => { c.name = chapterName(b, c.chapter); }); });
+  BOOKS.forEach((b) => {
+    const z = buildBookQuiz(b);
+    if (!z) return;
+    const idx = BOOK_QUIZZES.indexOf(b.quiz);
+    b.quiz = z;
+    if (idx >= 0) BOOK_QUIZZES[idx] = z;
+    QUIZ[z.key] = z;
+  });
   Object.keys(QUIZ).forEach((k) => {
     const z = QUIZ[k];
-    if (z.kind === "book") { z.name = z.book.name; z.rounds = bookRounds(z.book); }
-    else { z.name = chapterName(z.book, z.chapter); z.rounds = chapterRounds(z.name); }
+    if (z.kind === "chapter" && z._lang !== LANG) delete QUIZ[k];
   });
 }
 
 const loading = {};
+/* Chapters confirmed to have no Spanish file yet, so a language switch (or a
+   later visit) doesn't keep re-attempting a script tag that will just 404. */
+const noEsChapter = new Set();
 function loadChapter(bookId, n) {
   const key = bookId + "-" + n;
-  if (QUIZ[key]) return Promise.resolve(QUIZ[key]);
-  if (loading[key]) return loading[key];
-  loading[key] = new Promise((resolve, reject) => {
-    const finish = () => {
+  if (QUIZ[key] && QUIZ[key]._lang === LANG) return Promise.resolve(QUIZ[key]);
+  const loadKey = key + ":" + LANG;
+  if (loading[loadKey]) return loading[loadKey];
+  const wantEs = LANG === "es" && !noEsChapter.has(key);
+  loading[loadKey] = new Promise((resolve, reject) => {
+    const finishEn = () => {
       const raw = window.BQ_CHAPTER_DATA[key];
-      if (!raw) { delete loading[key]; reject(new Error("no data for " + key)); return; }
-      try { QUIZ[key] = normChapter(raw); resolve(QUIZ[key]); }
-      catch (e) { delete loading[key]; reject(e); }
+      if (!raw) { delete loading[loadKey]; reject(new Error("no data for " + key)); return; }
+      try { const z = normChapter(raw); z._lang = "en"; QUIZ[key] = z; resolve(z); }
+      catch (e) { delete loading[loadKey]; reject(e); }
     };
-    if (window.BQ_CHAPTER_DATA[key]) { finish(); return; }
-    const s = document.createElement("script");
-    s.src = `data/${bookId}/${n}.js?v=${DATA_V}`;
-    s.onload = finish;
-    s.onerror = () => { delete loading[key]; s.remove(); reject(new Error("could not load " + key)); };
-    document.head.appendChild(s);
+    const loadEnScript = () => {
+      if (window.BQ_CHAPTER_DATA[key]) { finishEn(); return; }
+      const s = document.createElement("script");
+      s.src = `data/${bookId}/${n}.js?v=${DATA_V}`;
+      s.onload = finishEn;
+      s.onerror = () => { delete loading[loadKey]; s.remove(); reject(new Error("could not load " + key)); };
+      document.head.appendChild(s);
+    };
+    if (!wantEs) { loadEnScript(); return; }
+    const finishEs = () => {
+      const raw = window.BQ_CHAPTER_DATA_ES[key];
+      if (!raw) { noEsChapter.add(key); loadEnScript(); return; }
+      try { const z = normChapter(raw); z._lang = "es"; QUIZ[key] = z; resolve(z); }
+      catch (e) { noEsChapter.add(key); loadEnScript(); }
+    };
+    if (window.BQ_CHAPTER_DATA_ES[key]) { finishEs(); return; }
+    const es = document.createElement("script");
+    es.src = `data/${bookId}/${n}.es.js?v=${DATA_V}`;
+    es.onload = finishEs;
+    es.onerror = () => { es.remove(); noEsChapter.add(key); loadEnScript(); };
+    document.head.appendChild(es);
   });
-  return loading[key];
+  return loading[loadKey];
 }
 function loadByKey(key) {
   if (QUIZ[key]) return Promise.resolve(QUIZ[key]);
@@ -1081,17 +1130,41 @@ function applyStaticUI() {
    route() would re-derive the screen from location.hash and always land
    back on the quiz's intro screen, silently discarding an in-progress
    round or question. */
+function renderForScreen(id) {
+  if (id === "intro") return buildStatic();
+  if (id === "round") return renderRound(Q[state.i] ? Q[state.i].round : 1);
+  if (id === "quiz") return renderQuestion();
+  if (id === "results") return renderResults({ fresh: false });
+  return route();
+}
+function pointAtQuiz(z) {
+  CH = z; Q = z.questions; N = Q.length;
+  ART = Object.assign({}, BASE_ART, z.art && typeof z.art === "object" ? z.art : {});
+}
 function refreshCurrentScreen() {
   const cur = document.querySelector(".screen:not([hidden])");
   const id = cur && cur.id;
   if (id === "home") return renderHome();
   if (id === "mybible") return renderMyBible();
   if (!CH) return route();
-  if (id === "intro") return buildStatic();
-  if (id === "round") return renderRound(Q[state.i].round);
-  if (id === "quiz") return renderQuestion();
-  if (id === "results") return renderResults({ fresh: false });
-  return route();
+  if (CH.kind === "book") {
+    /* Already rebuilt synchronously in refreshLanguageDependentData() — just
+       point the active quiz state at the fresh (new-language) object. */
+    pointAtQuiz(CH.book.quiz);
+    return renderForScreen(id);
+  }
+  if (CH._lang !== LANG) {
+    /* A chapter quiz: its cache entry was evicted for the language switch,
+       so re-fetch it (falls back to English if no Spanish file exists yet). */
+    setLoading(true);
+    loadChapter(CH.book.id, CH.chapter).then((z) => {
+      setLoading(false);
+      pointAtQuiz(z);
+      renderForScreen(id);
+    }).catch(() => setLoading(false));
+    return;
+  }
+  renderForScreen(id);
 }
 
 function switchLang(l) {
